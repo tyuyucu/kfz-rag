@@ -535,7 +535,7 @@ if not st.session_state.authenticated:
     """, unsafe_allow_html=True)
     password = st.text_input("Zugangspasswort", type="password", placeholder="Passwort eingeben...")
     if st.button("Zugang anfordern", use_container_width=True):
-        if password == "chinamann":
+        if password == "kfzragsys1":
             st.session_state.authenticated = True
             st.rerun()
         else:
