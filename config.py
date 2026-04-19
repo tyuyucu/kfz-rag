@@ -3,6 +3,15 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+# Streamlit Cloud: lade Secrets in os.environ, falls vorhanden (sonst no-op)
+try:
+    import streamlit as st
+    for _key, _val in st.secrets.items():
+        if isinstance(_val, str) and _key not in os.environ:
+            os.environ[_key] = _val
+except Exception:
+    pass
+
 # OpenAI
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 EMBEDDING_MODEL = "text-embedding-3-small"
