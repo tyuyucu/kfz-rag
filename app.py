@@ -1,6 +1,15 @@
 import os
 import html
 import streamlit as st
+
+# Streamlit Cloud: Secrets in os.environ laden BEVOR andere Module importiert werden
+try:
+    for _key, _val in st.secrets.items():
+        if isinstance(_val, str) and _key not in os.environ:
+            os.environ[_key] = _val
+except Exception:
+    pass
+
 from db.database import init_db, get_all_documents, create_chat_session, save_chat_message
 from db.vector_store import get_chunk_count
 from ingestion.pipeline import ingest_document, remove_document
