@@ -533,13 +533,15 @@ if not st.session_state.authenticated:
         </p>
     </div>
     """, unsafe_allow_html=True)
-    password = st.text_input("Zugangspasswort", type="password", placeholder="Passwort eingeben...")
-    if st.button("Zugang anfordern", use_container_width=True):
-        if password == "kfzragsys1":
-            st.session_state.authenticated = True
-            st.rerun()
-        else:
-            st.error("Falsches Passwort")
+    with st.form("login_form", clear_on_submit=False):
+        password = st.text_input("Zugangspasswort", type="password", placeholder="Passwort eingeben...")
+        submitted = st.form_submit_button("Zugang anfordern", use_container_width=True)
+        if submitted:
+            if password == "kfzragsys1":
+                st.session_state.authenticated = True
+                st.rerun()
+            else:
+                st.error("Falsches Passwort")
     st.stop()
 
 # ── Prototyp-Hinweis ──
