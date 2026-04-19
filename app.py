@@ -537,7 +537,7 @@ if not st.session_state.authenticated:
         password = st.text_input("Zugangspasswort", type="password", placeholder="Passwort eingeben...")
         submitted = st.form_submit_button("Zugang anfordern", use_container_width=True)
         if submitted:
-            if password == "kfzragsys1":
+            if password == "ragsys1":
                 st.session_state.authenticated = True
                 st.rerun()
             else:
