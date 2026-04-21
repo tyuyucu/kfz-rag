@@ -349,6 +349,20 @@ st.markdown("""
         box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12) !important;
     }
 
+    /* ── Bottom-Container (Chat-Input-Bar) Dark-Mode ── */
+    [data-testid="stBottomBlockContainer"],
+    [data-testid="stBottom"],
+    .stBottom,
+    div[class*="stBottom"] {
+        background-color: #0e1117 !important;
+        background: #0e1117 !important;
+        border-top: 1px solid rgba(255,255,255,0.05) !important;
+    }
+    [data-testid="stBottomBlockContainer"] > div,
+    [data-testid="stBottom"] > div {
+        background-color: transparent !important;
+    }
+
     /* ── Quiz-Karte ── */
     .quiz-question-card {
         background: rgba(255,255,255,0.03);
