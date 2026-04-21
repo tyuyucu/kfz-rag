@@ -50,47 +50,116 @@ st.markdown("""
     /* ── Allgemein ── */
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
-    /* ── Dark-Mode erzwingen (auch wenn Streamlit-Theme "Light" gewählt wird) ── */
-    :root, [data-theme="light"], [data-theme="dark"] {
-        --background-color: #0e1117 !important;
-        --secondary-background-color: #1a1f2e !important;
-        --text-color: #e2e8f0 !important;
-        --primary-color: #6366f1 !important;
-        color-scheme: dark !important;
-    }
-    html, body, .stApp, [data-testid="stAppViewContainer"], [data-testid="stHeader"] {
-        background-color: #0e1117 !important;
-        color: #e2e8f0 !important;
-    }
-    [data-testid="stHeader"] {
-        background: rgba(14, 17, 23, 0.6) !important;
-    }
-    /* Texte, die Streamlit standardmäßig in Light-Mode dunkel rendert */
-    .stMarkdown, .stMarkdown p, .stMarkdown li, .stMarkdown span,
-    label, .stRadio label, .stCheckbox label,
-    [data-testid="stWidgetLabel"], [data-testid="stMarkdownContainer"] {
-        color: #e2e8f0 !important;
-    }
-    /* Inputs immer dunkel */
-    input, textarea, select,
-    .stTextInput input, .stTextArea textarea, .stSelectbox div[role="combobox"],
-    .stChatInput textarea {
-        background-color: #1a1f2e !important;
-        color: #e2e8f0 !important;
-        border-color: rgba(255,255,255,0.1) !important;
-    }
-    input::placeholder, textarea::placeholder {
-        color: #64748b !important;
-    }
-    /* File Uploader Drop Zone */
-    [data-testid="stFileUploader"] section,
-    [data-testid="stFileUploaderDropzone"] {
-        background-color: #1a1f2e !important;
-        border-color: rgba(255,255,255,0.1) !important;
-    }
-    [data-testid="stFileUploader"] section *,
-    [data-testid="stFileUploaderDropzone"] * {
-        color: #e2e8f0 !important;
+    /* ── Dark-Mode nur erzwingen, wenn Browser/OS auf Light steht ── */
+    @media (prefers-color-scheme: light) {
+        :root, [data-theme="light"], [data-theme="dark"] {
+            --background-color: #0e1117 !important;
+            --secondary-background-color: #1a1f2e !important;
+            --text-color: #e2e8f0 !important;
+            --primary-color: #6366f1 !important;
+            color-scheme: dark !important;
+        }
+        html, body, .stApp, [data-testid="stAppViewContainer"], [data-testid="stHeader"] {
+            background-color: #0e1117 !important;
+            color: #e2e8f0 !important;
+        }
+        [data-testid="stHeader"] {
+            background: rgba(14, 17, 23, 0.6) !important;
+        }
+        /* Texte, die Streamlit standardmäßig in Light-Mode dunkel rendert */
+        .stMarkdown, .stMarkdown p, .stMarkdown li, .stMarkdown span,
+        label, .stRadio label, .stCheckbox label,
+        [data-testid="stWidgetLabel"], [data-testid="stMarkdownContainer"] {
+            color: #e2e8f0 !important;
+        }
+        /* Inputs immer dunkel */
+        input, textarea, select,
+        .stTextInput input, .stTextArea textarea, .stSelectbox div[role="combobox"],
+        .stChatInput textarea {
+            background-color: #1a1f2e !important;
+            color: #e2e8f0 !important;
+            border-color: rgba(255,255,255,0.1) !important;
+        }
+        input::placeholder, textarea::placeholder {
+            color: #64748b !important;
+        }
+        /* File Uploader Drop Zone */
+        [data-testid="stFileUploader"] section,
+        [data-testid="stFileUploaderDropzone"] {
+            background-color: #1a1f2e !important;
+            border-color: rgba(255,255,255,0.1) !important;
+        }
+        [data-testid="stFileUploader"] section *,
+        [data-testid="stFileUploaderDropzone"] * {
+            color: #e2e8f0 !important;
+        }
+        /* X-Button & Radio-Kreise */
+        section[data-testid="stSidebar"] [data-testid="stColumn"] button {
+            background: rgba(255,255,255,0.04) !important;
+            border: 1px solid rgba(255,255,255,0.08) !important;
+            color: #94a3b8 !important;
+        }
+        [data-baseweb="radio"] > div:first-child,
+        .stRadio [role="radio"] {
+            background-color: #1a1f2e !important;
+            border-color: rgba(255,255,255,0.25) !important;
+        }
+        [data-baseweb="radio"] input:checked + div,
+        [data-baseweb="radio"][aria-checked="true"] > div:first-child {
+            background-color: #1a1f2e !important;
+            border-color: #ef4444 !important;
+        }
+        /* Bottom-Container (Chat-Input-Bar) */
+        [data-testid="stBottomBlockContainer"],
+        [data-testid="stBottom"],
+        .stBottom,
+        div[class*="stBottom"] {
+            background-color: #0e1117 !important;
+            background: #0e1117 !important;
+            border-top: 1px solid rgba(255,255,255,0.05) !important;
+        }
+        [data-testid="stBottomBlockContainer"] > div,
+        [data-testid="stBottom"] > div {
+            background-color: transparent !important;
+        }
+        /* Generische Buttons */
+        .stButton > button {
+            background: #1a1f2e !important;
+            color: #e2e8f0 !important;
+            border: 1px solid rgba(255,255,255,0.1) !important;
+        }
+        .stButton > button:hover {
+            background: #232836 !important;
+            border-color: rgba(99, 102, 241, 0.4) !important;
+            color: #ffffff !important;
+        }
+        /* Form-Submit-Button */
+        [data-testid="stForm"] button,
+        button[data-testid="stFormSubmitButton"],
+        button[data-testid^="stBaseButton-"][data-testid*="FormSubmit"] {
+            background: rgba(99, 102, 241, 0.12) !important;
+            border: 1px solid rgba(99, 102, 241, 0.35) !important;
+            color: #e2e8f0 !important;
+        }
+        [data-testid="stForm"] button:hover,
+        button[data-testid="stFormSubmitButton"]:hover,
+        button[data-testid^="stBaseButton-"][data-testid*="FormSubmit"]:hover {
+            background: rgba(99, 102, 241, 0.2) !important;
+            border-color: rgba(99, 102, 241, 0.55) !important;
+            color: #ffffff !important;
+        }
+        /* Passwort-Toggle-Button */
+        [data-testid="stTextInputRootElement"] button,
+        .stTextInput button[kind="headerNoPadding"] {
+            background: transparent !important;
+            color: #94a3b8 !important;
+            border: none !important;
+        }
+        [data-testid="stTextInputRootElement"] button:hover,
+        .stTextInput button[kind="headerNoPadding"]:hover {
+            color: #e2e8f0 !important;
+            background: rgba(255,255,255,0.05) !important;
+        }
     }
 
     .stApp {
@@ -144,28 +213,11 @@ st.markdown("""
         justify-content: space-evenly !important;
     }
 
-    /* ── Dokument-Entfernen-Button (X) Dark-Mode ── */
-    section[data-testid="stSidebar"] [data-testid="stColumn"] button {
-        background: rgba(255,255,255,0.04) !important;
-        border: 1px solid rgba(255,255,255,0.08) !important;
-        color: #94a3b8 !important;
-    }
+    /* ── X-Button Hover (Löschen-Akzent) ── */
     section[data-testid="stSidebar"] [data-testid="stColumn"] button:hover {
         color: #f87171 !important;
         border-color: rgba(239, 68, 68, 0.5) !important;
         background: rgba(239, 68, 68, 0.1) !important;
-    }
-
-    /* ── Radio-Button-Kreise (Chat/Quiz/Sparring) Dark-Mode ── */
-    [data-baseweb="radio"] > div:first-child,
-    .stRadio [role="radio"] {
-        background-color: #1a1f2e !important;
-        border-color: rgba(255,255,255,0.25) !important;
-    }
-    [data-baseweb="radio"] input:checked + div,
-    [data-baseweb="radio"][aria-checked="true"] > div:first-child {
-        background-color: #1a1f2e !important;
-        border-color: #ef4444 !important;
     }
 
     /* ── Modus-Tabs ── */
@@ -349,20 +401,6 @@ st.markdown("""
         box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12) !important;
     }
 
-    /* ── Bottom-Container (Chat-Input-Bar) Dark-Mode ── */
-    [data-testid="stBottomBlockContainer"],
-    [data-testid="stBottom"],
-    .stBottom,
-    div[class*="stBottom"] {
-        background-color: #0e1117 !important;
-        background: #0e1117 !important;
-        border-top: 1px solid rgba(255,255,255,0.05) !important;
-    }
-    [data-testid="stBottomBlockContainer"] > div,
-    [data-testid="stBottom"] > div {
-        background-color: transparent !important;
-    }
-
     /* ── Quiz-Karte ── */
     .quiz-question-card {
         background: rgba(255,255,255,0.03);
@@ -435,14 +473,6 @@ st.markdown("""
         font-weight: 500 !important;
         transition: all 0.2s !important;
         font-size: 0.85rem !important;
-        background: #1a1f2e !important;
-        color: #e2e8f0 !important;
-        border: 1px solid rgba(255,255,255,0.1) !important;
-    }
-    .stButton > button:hover {
-        background: #232836 !important;
-        border-color: rgba(99, 102, 241, 0.4) !important;
-        color: #ffffff !important;
     }
     .stButton > button[kind="primary"] {
         background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%) !important;
@@ -535,38 +565,6 @@ st.markdown("""
     }
     .stTextInput [data-testid="InputInstructions"] {
         display: none !important;
-    }
-
-    /* ── Form-Submit-Button (Zugang anfordern) Dark-Mode ── */
-    [data-testid="stForm"] button,
-    button[data-testid="stFormSubmitButton"],
-    button[data-testid^="stBaseButton-"][data-testid*="FormSubmit"] {
-        background: rgba(99, 102, 241, 0.12) !important;
-        border: 1px solid rgba(99, 102, 241, 0.35) !important;
-        color: #e2e8f0 !important;
-        transition: all 0.2s !important;
-    }
-    [data-testid="stForm"] button:hover,
-    button[data-testid="stFormSubmitButton"]:hover,
-    button[data-testid^="stBaseButton-"][data-testid*="FormSubmit"]:hover {
-        background: rgba(99, 102, 241, 0.2) !important;
-        border-color: rgba(99, 102, 241, 0.55) !important;
-        color: #ffffff !important;
-    }
-
-    /* ── Passwort-Toggle-Button (Augen-Icon) Dark-Mode ── */
-    [data-testid="stTextInputRootElement"] button,
-    .stTextInput button[kind="headerNoPadding"],
-    .stTextInput button[aria-label*="asswort"],
-    .stTextInput button[aria-label*="assword"] {
-        background: transparent !important;
-        color: #94a3b8 !important;
-        border: none !important;
-    }
-    [data-testid="stTextInputRootElement"] button:hover,
-    .stTextInput button[kind="headerNoPadding"]:hover {
-        color: #e2e8f0 !important;
-        background: rgba(255,255,255,0.05) !important;
     }
 
     /* ── Mode Badge ── */
