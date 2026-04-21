@@ -50,6 +50,49 @@ st.markdown("""
     /* ── Allgemein ── */
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
+    /* ── Dark-Mode erzwingen (auch wenn Streamlit-Theme "Light" gewählt wird) ── */
+    :root, [data-theme="light"], [data-theme="dark"] {
+        --background-color: #0e1117 !important;
+        --secondary-background-color: #1a1f2e !important;
+        --text-color: #e2e8f0 !important;
+        --primary-color: #6366f1 !important;
+        color-scheme: dark !important;
+    }
+    html, body, .stApp, [data-testid="stAppViewContainer"], [data-testid="stHeader"] {
+        background-color: #0e1117 !important;
+        color: #e2e8f0 !important;
+    }
+    [data-testid="stHeader"] {
+        background: rgba(14, 17, 23, 0.6) !important;
+    }
+    /* Texte, die Streamlit standardmäßig in Light-Mode dunkel rendert */
+    .stMarkdown, .stMarkdown p, .stMarkdown li, .stMarkdown span,
+    label, .stRadio label, .stCheckbox label,
+    [data-testid="stWidgetLabel"], [data-testid="stMarkdownContainer"] {
+        color: #e2e8f0 !important;
+    }
+    /* Inputs immer dunkel */
+    input, textarea, select,
+    .stTextInput input, .stTextArea textarea, .stSelectbox div[role="combobox"],
+    .stChatInput textarea {
+        background-color: #1a1f2e !important;
+        color: #e2e8f0 !important;
+        border-color: rgba(255,255,255,0.1) !important;
+    }
+    input::placeholder, textarea::placeholder {
+        color: #64748b !important;
+    }
+    /* File Uploader Drop Zone */
+    [data-testid="stFileUploader"] section,
+    [data-testid="stFileUploaderDropzone"] {
+        background-color: #1a1f2e !important;
+        border-color: rgba(255,255,255,0.1) !important;
+    }
+    [data-testid="stFileUploader"] section *,
+    [data-testid="stFileUploaderDropzone"] * {
+        color: #e2e8f0 !important;
+    }
+
     .stApp {
         font-family: 'Inter', sans-serif;
     }
@@ -537,7 +580,7 @@ if not st.session_state.authenticated:
         password = st.text_input("Zugangspasswort", type="password", placeholder="Passwort eingeben...")
         submitted = st.form_submit_button("Zugang anfordern", use_container_width=True)
         if submitted:
-            if password == "ragsys1":
+            if password == "kfzragsys1":
                 st.session_state.authenticated = True
                 st.rerun()
             else:
