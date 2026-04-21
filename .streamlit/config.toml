@@ -1,2 +1,5 @@
 [logger]
 level = "error"
+
+[theme]
+base = "dark"
