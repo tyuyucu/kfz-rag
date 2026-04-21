@@ -144,11 +144,28 @@ st.markdown("""
         justify-content: space-evenly !important;
     }
 
-    /* ── Dokument-Entfernen-Button rot bei Hover ── */
+    /* ── Dokument-Entfernen-Button (X) Dark-Mode ── */
+    section[data-testid="stSidebar"] [data-testid="stColumn"] button {
+        background: rgba(255,255,255,0.04) !important;
+        border: 1px solid rgba(255,255,255,0.08) !important;
+        color: #94a3b8 !important;
+    }
     section[data-testid="stSidebar"] [data-testid="stColumn"] button:hover {
         color: #f87171 !important;
         border-color: rgba(239, 68, 68, 0.5) !important;
         background: rgba(239, 68, 68, 0.1) !important;
+    }
+
+    /* ── Radio-Button-Kreise (Chat/Quiz/Sparring) Dark-Mode ── */
+    [data-baseweb="radio"] > div:first-child,
+    .stRadio [role="radio"] {
+        background-color: #1a1f2e !important;
+        border-color: rgba(255,255,255,0.25) !important;
+    }
+    [data-baseweb="radio"] input:checked + div,
+    [data-baseweb="radio"][aria-checked="true"] > div:first-child {
+        background-color: #1a1f2e !important;
+        border-color: #ef4444 !important;
     }
 
     /* ── Modus-Tabs ── */
