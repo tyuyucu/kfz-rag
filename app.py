@@ -495,6 +495,38 @@ st.markdown("""
         display: none !important;
     }
 
+    /* ── Form-Submit-Button (Zugang anfordern) Dark-Mode ── */
+    [data-testid="stForm"] button,
+    button[data-testid="stFormSubmitButton"],
+    button[data-testid^="stBaseButton-"][data-testid*="FormSubmit"] {
+        background: rgba(99, 102, 241, 0.12) !important;
+        border: 1px solid rgba(99, 102, 241, 0.35) !important;
+        color: #e2e8f0 !important;
+        transition: all 0.2s !important;
+    }
+    [data-testid="stForm"] button:hover,
+    button[data-testid="stFormSubmitButton"]:hover,
+    button[data-testid^="stBaseButton-"][data-testid*="FormSubmit"]:hover {
+        background: rgba(99, 102, 241, 0.2) !important;
+        border-color: rgba(99, 102, 241, 0.55) !important;
+        color: #ffffff !important;
+    }
+
+    /* ── Passwort-Toggle-Button (Augen-Icon) Dark-Mode ── */
+    [data-testid="stTextInputRootElement"] button,
+    .stTextInput button[kind="headerNoPadding"],
+    .stTextInput button[aria-label*="asswort"],
+    .stTextInput button[aria-label*="assword"] {
+        background: transparent !important;
+        color: #94a3b8 !important;
+        border: none !important;
+    }
+    [data-testid="stTextInputRootElement"] button:hover,
+    .stTextInput button[kind="headerNoPadding"]:hover {
+        color: #e2e8f0 !important;
+        background: rgba(255,255,255,0.05) !important;
+    }
+
     /* ── Mode Badge ── */
     .mode-badge {
         display: inline-flex;
@@ -580,7 +612,7 @@ if not st.session_state.authenticated:
         password = st.text_input("Zugangspasswort", type="password", placeholder="Passwort eingeben...")
         submitted = st.form_submit_button("Zugang anfordern", use_container_width=True)
         if submitted:
-            if password == "kfzragsys1":
+            if password == "ragsys1":
                 st.session_state.authenticated = True
                 st.rerun()
             else:
