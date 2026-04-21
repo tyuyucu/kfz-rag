@@ -404,15 +404,26 @@ st.markdown("""
         font-weight: 500 !important;
         transition: all 0.2s !important;
         font-size: 0.85rem !important;
+        background: #1a1f2e !important;
+        color: #e2e8f0 !important;
+        border: 1px solid rgba(255,255,255,0.1) !important;
+    }
+    .stButton > button:hover {
+        background: #232836 !important;
+        border-color: rgba(99, 102, 241, 0.4) !important;
+        color: #ffffff !important;
     }
     .stButton > button[kind="primary"] {
         background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%) !important;
         border: none !important;
+        color: #ffffff !important;
         box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3) !important;
     }
     .stButton > button[kind="primary"]:hover {
+        background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%) !important;
         box-shadow: 0 4px 16px rgba(99, 102, 241, 0.45) !important;
         transform: translateY(-1px) !important;
+        color: #ffffff !important;
     }
 
     /* ── Expander ── */
