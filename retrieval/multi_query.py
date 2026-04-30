@@ -5,10 +5,10 @@ client = OpenAI(api_key=OPENAI_API_KEY)
 
 
 def generate_query_variants(original_query: str) -> list[str]:
-    """Generiert mehrere Varianten einer Suchanfrage mit dem LLM.
+    """macht mehrere varianten einer suchanfrage mit dem llm.
 
-    Dies verbessert den Recall, da verschiedene Formulierungen
-    unterschiedliche relevante Chunks finden können.
+    so werden durch verschiedene formulierungen oft mehr passende
+    abschnitte gefunden.
     """
     response = client.chat.completions.create(
         model=LLM_MODEL,
@@ -31,6 +31,6 @@ def generate_query_variants(original_query: str) -> list[str]:
     variants_text = response.choices[0].message.content.strip()
     variants = [v.strip() for v in variants_text.split("\n") if v.strip()]
 
-    # Original-Query immer einschliessen
+    # original-query immer mitnehmen
     all_queries = [original_query] + variants[:MULTI_QUERY_COUNT]
     return all_queries

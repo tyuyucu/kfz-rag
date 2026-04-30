@@ -5,9 +5,9 @@ client = OpenAI(api_key=OPENAI_API_KEY)
 
 
 def embed_texts(texts: list[str]) -> list[list[float]]:
-    """Erstellt Embeddings für eine Liste von Texten via OpenAI API.
+    """holt embeddings für mehrere texte über die openai api.
 
-    Verarbeitet in Batches von 100 (API-Limit: 2048).
+    läuft in paketen zu 100 einträgen (api-limit: 2048).
     """
     all_embeddings = []
     batch_size = 100
@@ -25,7 +25,7 @@ def embed_texts(texts: list[str]) -> list[list[float]]:
 
 
 def embed_query(query: str) -> list[float]:
-    """Erstellt ein Embedding für eine einzelne Suchanfrage."""
+    """holt ein embedding für eine einzelne suchanfrage."""
     response = client.embeddings.create(
         model=EMBEDDING_MODEL,
         input=query

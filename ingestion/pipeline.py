@@ -10,9 +10,9 @@ from config import DOCUMENTS_DIR
 
 
 def ingest_document(filepath: str, filename: str) -> dict:
-    """Verarbeitet ein einzelnes PDF-Dokument: Extract -> Chunk -> Embed -> Store.
+    """verarbeitet ein einzelnes pdf-dokument von anfang bis ende.
 
-    Returns: dict mit Infos über das Ergebnis
+    rückgabe: dict mit infos zum ergebnis.
     """
     file_hash = compute_file_hash(filepath)
 
@@ -49,7 +49,7 @@ def ingest_document(filepath: str, filename: str) -> dict:
 
 
 def ingest_all_documents() -> list[dict]:
-    """Verarbeitet alle PDFs im documents-Ordner."""
+    """verarbeitet alle pdfs im documents-ordner."""
     results = []
 
     if not os.path.exists(DOCUMENTS_DIR):
@@ -73,7 +73,7 @@ def ingest_all_documents() -> list[dict]:
 
 
 def remove_document(filename: str) -> bool:
-    """Entfernt ein Dokument aus der Datenbank und dem Dateisystem."""
+    """löscht ein dokument aus datenbank und dateisystem."""
     doc = get_document_by_filename(filename)
     if doc:
         delete_document(doc["id"])

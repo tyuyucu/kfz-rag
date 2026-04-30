@@ -2,7 +2,7 @@ import os
 import html
 import streamlit as st
 
-# Streamlit Cloud: Secrets in os.environ laden BEVOR andere Module importiert werden
+# streamlit cloud: secrets in os.environ laden, bevor andere module kommen
 try:
     for _key, _val in st.secrets.items():
         if isinstance(_val, str) and _key not in os.environ:
@@ -19,7 +19,7 @@ from generation.generator import generate_answer, is_greeting, generate_greeting
 from generation.quiz import generate_quiz_question
 from config import DOCUMENTS_DIR
 
-# ── Konstanten ──
+# bereich: konstanten
 NO_ANSWER_HINTS = [
     "keine relevanten informationen",
     "nicht im kontext enthalten",
@@ -36,7 +36,7 @@ NO_ANSWER_HINTS = [
     "was möchtest du"
 ]
 
-# ── Seiten-Konfiguration ──
+# bereich: seiten-konfiguration
 st.set_page_config(
     page_title="Kfz-Haftpflicht Lern-Assistent",
     page_icon="🎓",
@@ -44,13 +44,13 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# ── Custom CSS ──
+# bereich: eigenes css
 st.markdown("""
 <style>
-    /* ── Allgemein ── */
+    /* allgemein */
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
-    /* ── Dark-Mode universell erzwingen (Streamlit ignoriert Browser-Preference) ── */
+    /* dark-mode immer aktiv halten */
     :root, [data-theme="light"], [data-theme="dark"] {
         --background-color: #0e1117 !important;
         --secondary-background-color: #1a1f2e !important;
@@ -156,7 +156,7 @@ st.markdown("""
         font-family: 'Inter', sans-serif;
     }
 
-    /* ── Sidebar ── */
+    /* sidebar */
     section[data-testid="stSidebar"] {
         background: linear-gradient(180deg, #1a1f2e 0%, #0f1320 100%);
         border-right: 1px solid rgba(99, 102, 241, 0.15);
@@ -167,8 +167,8 @@ st.markdown("""
         letter-spacing: -0.02em;
     }
 
-    /* ── Sidebar Branding-Button ── */
-    /* ── Branding-Home-Button (erstes Element in Sidebar) ── */
+    /* sidebar branding-button */
+    /* branding-home-button (erstes element in der sidebar) */
     [data-testid="stSidebarUserContent"] [data-testid="stVerticalBlock"] > [data-testid="stElementContainer"]:nth-child(1) button {
         background: transparent !important;
         border: 1px solid rgba(255,255,255,0.08) !important;
@@ -197,20 +197,20 @@ st.markdown("""
         line-height: 2.2 !important;
     }
 
-    /* ── Modus-Radio-Buttons gleichmäßig verteilen ── */
+    /* modus-radio-buttons gleichmäßig verteilen */
     section[data-testid="stSidebar"] [data-testid="stRadio"] > div[role="radiogroup"],
     section[data-testid="stSidebar"] [data-testid="stRadio"] > div {
         justify-content: space-evenly !important;
     }
 
-    /* ── X-Button Hover (Löschen-Akzent) ── */
+    /* x-button hover (löschen-akzent) */
     section[data-testid="stSidebar"] [data-testid="stColumn"] button:hover {
         color: #f87171 !important;
         border-color: rgba(239, 68, 68, 0.5) !important;
         background: rgba(239, 68, 68, 0.1) !important;
     }
 
-    /* ── Modus-Tabs ── */
+    /* modus-tabs */
     .mode-tabs {
         display: flex;
         gap: 0.5rem;
@@ -238,7 +238,7 @@ st.markdown("""
         border: 1px solid rgba(255,255,255,0.08);
     }
 
-    /* ── Stat-Karten ── */
+    /* stat-karten */
     .stat-row {
         display: flex;
         gap: 0.6rem;
@@ -265,7 +265,7 @@ st.markdown("""
         margin-top: 0.15rem;
     }
 
-    /* ── Dokument-Liste ── */
+    /* dokument-liste */
     .doc-item {
         display: flex;
         align-items: center;
@@ -298,7 +298,7 @@ st.markdown("""
         margin-top: 0.1rem;
     }
 
-    /* ── Sidebar Section Headers ── */
+    /* sidebar section header */
     .sidebar-section {
         font-size: 0.72rem;
         font-weight: 600;
@@ -310,7 +310,7 @@ st.markdown("""
         border-bottom: 1px solid rgba(255,255,255,0.06);
     }
 
-    /* ── Hauptbereich Header ── */
+    /* hauptbereich header */
     .main-header {
         text-align: center;
         padding: 1.5rem 0 1rem 0;
@@ -333,7 +333,7 @@ st.markdown("""
         margin-top: 0.3rem;
     }
 
-    /* ── Welcome Cards ── */
+    /* welcome-cards */
     .welcome-grid {
         display: grid;
         grid-template-columns: repeat(3, 1fr);
@@ -370,14 +370,14 @@ st.markdown("""
         line-height: 1.4;
     }
 
-    /* ── Chat Messages ── */
+    /* chat-messages */
     .stChatMessage {
         border-radius: 12px !important;
         border: 1px solid rgba(255,255,255,0.05) !important;
         margin-bottom: 0.8rem !important;
     }
 
-    /* ── Chat Input ── */
+    /* chat-input */
     .stChatInput {
         border-radius: 14px !important;
     }
@@ -391,7 +391,7 @@ st.markdown("""
         box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12) !important;
     }
 
-    /* ── Quiz-Karte ── */
+    /* quiz-karte */
     .quiz-question-card {
         background: rgba(255,255,255,0.03);
         border: 1px solid rgba(255,255,255,0.08);
@@ -411,7 +411,7 @@ st.markdown("""
         color: #64748b;
     }
 
-    /* ── Quiz Score Badge ── */
+    /* quiz-score-badge */
     .score-badge {
         display: inline-flex;
         align-items: center;
@@ -426,7 +426,7 @@ st.markdown("""
         margin-bottom: 1rem;
     }
 
-    /* ── Quiz Antwortoptionen nach Beantwortung ── */
+    /* quiz-antwortoptionen nach beantwortung */
     .quiz-option-answered {
         padding: 0.7rem 1rem;
         border-radius: 10px;
@@ -457,7 +457,7 @@ st.markdown("""
         color: #94a3b8;
     }
 
-    /* ── Buttons ── */
+    /* buttons */
     .stButton > button {
         border-radius: 10px !important;
         font-weight: 500 !important;
@@ -477,21 +477,21 @@ st.markdown("""
         color: #ffffff !important;
     }
 
-    /* ── Expander ── */
+    /* expander */
     .streamlit-expanderHeader {
         font-size: 0.85rem !important;
         font-weight: 500 !important;
         border-radius: 10px !important;
     }
 
-    /* ── File Uploader ── */
+    /* file-uploader */
     section[data-testid="stFileUploader"] {
         border-radius: 10px;
     }
     section[data-testid="stFileUploader"] > div {
         border-radius: 10px !important;
     }
-    /* Deutsche Texte für File Uploader */
+    /* deutsche texte für file-uploader */
     [data-testid="stFileUploaderDropzone"] span:first-of-type {
         visibility: hidden;
         position: relative;
@@ -527,29 +527,29 @@ st.markdown("""
         white-space: nowrap;
     }
 
-    /* ── Divider ── */
+    /* divider */
     hr {
         border-color: rgba(255,255,255,0.06) !important;
         margin: 0.8rem 0 !important;
     }
 
-    /* ── Progress Bar ── */
+    /* progress-bar */
     .stProgress > div > div {
         background: linear-gradient(90deg, #6366f1, #8b5cf6) !important;
         border-radius: 6px !important;
     }
 
-    /* ── Metric hiding default ── */
+    /* metric-default ausblenden */
     [data-testid="stMetric"] {
         display: none;
     }
 
-    /* ── Alert boxes ── */
+    /* alert-boxen */
     .stAlert {
         border-radius: 10px !important;
     }
 
-    /* ── Text Input Tooltip (Press Enter to apply) verstecken ── */
+    /* text-input-tooltip ausblenden */
     .stTextInput div[data-baseweb="tooltip"] {
         display: none !important;
     }
@@ -557,7 +557,7 @@ st.markdown("""
         display: none !important;
     }
 
-    /* ── Mode Badge ── */
+    /* mode-badge */
     .mode-badge {
         display: inline-flex;
         align-items: center;
@@ -585,7 +585,7 @@ st.markdown("""
         color: #6ee7b7;
     }
 
-    /* ── Disable auto-anchor links on headings in chat ── */
+    /* auto-anchor-links in chat-headings aus */
     [data-testid="stChatMessage"] h1 a,
     [data-testid="stChatMessage"] h2 a,
     [data-testid="stChatMessage"] h3 a,
@@ -594,7 +594,7 @@ st.markdown("""
         pointer-events: none !important;
     }
 
-    /* ── Expander overflow fix ── */
+    /* overflow-fix für expander */
     [data-testid="stExpander"] hr {
         display: none !important;
     }
@@ -602,7 +602,7 @@ st.markdown("""
         overflow: hidden !important;
     }
 
-    /* ── Source chunk in expander ── */
+    /* quellen-abschnitt im expander */
     .source-chunk {
         background: rgba(255,255,255,0.03);
         border: 1px solid rgba(255,255,255,0.06);
@@ -625,7 +625,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# ── Zugangskontrolle ──
+# bereich: zugangskontrolle
 if "authenticated" not in st.session_state:
     st.session_state.authenticated = False
 
@@ -649,7 +649,7 @@ if not st.session_state.authenticated:
                 st.error("Falsches Passwort")
     st.stop()
 
-# ── Prototyp-Hinweis ──
+# bereich: prototyp-hinweis
 st.info(
     "**Prototyp** — Diese Anwendung wurde im Rahmen einer Bachelorarbeit entwickelt "
     "und dient ausschließlich zu Lern- und Demonstrationszwecken. "
@@ -657,7 +657,7 @@ st.info(
     icon="🔬"
 )
 
-# ── Datenbank initialisieren ──
+# bereich: datenbank starten
 @st.cache_resource
 def setup_database():
     init_db()
@@ -671,7 +671,7 @@ except Exception as e:
     db_connected = False
     db_error = str(e)
 
-# ── Session State initialisieren ──
+# bereich: session state starten
 if "chat_history" not in st.session_state:
     st.session_state.chat_history = []
 if "session_id" not in st.session_state:
@@ -690,9 +690,9 @@ if "quiz_score" not in st.session_state:
 if "uploader_key" not in st.session_state:
     st.session_state.uploader_key = 0
 
-# ── Sidebar ──
+# bereich: sidebar
 with st.sidebar:
-    # Branding-Button (klickbar → Startseite)
+    # branding-button (klickbar -> startseite)
     if st.button("🎓\nKfz-Haftpflicht\nLern-Assistent", use_container_width=True, key="brand_home"):
         st.session_state.mode = None
         st.session_state.chat_history = []
@@ -704,7 +704,7 @@ with st.sidebar:
 
     st.divider()
 
-    # Modus-Auswahl
+    # modus-auswahl
     modes = ["Chat", "Quiz", "Sparring"]
     current_index = modes.index(st.session_state.mode) if st.session_state.mode in modes else None
     new_mode = st.radio(
@@ -715,7 +715,7 @@ with st.sidebar:
         index=current_index
     )
 
-    # Bei Moduswechsel Chat-Verlauf zurücksetzen
+    # bei moduswechsel chat-verlauf zurücksetzen
     if new_mode is not None and new_mode != st.session_state.mode:
         st.session_state.mode = new_mode
         st.session_state.chat_history = []
@@ -740,11 +740,11 @@ with st.sidebar:
         st.info("Starte PostgreSQL mit: `docker-compose up -d`")
         st.stop()
 
-    # Dokumente anzeigen
+    # dokumente anzeigen
     documents = get_all_documents()
     chunk_count = get_chunk_count()
 
-    # Stats
+    # zahlen anzeigen
     st.markdown(f"""
     <div class="stat-row">
         <div class="stat-card">
@@ -758,7 +758,7 @@ with st.sidebar:
     </div>
     """, unsafe_allow_html=True)
 
-    # Dokumentenliste
+    # dokumentenliste
     st.markdown('<div class="sidebar-section">Wissensbasis</div>', unsafe_allow_html=True)
 
     if documents:
@@ -785,7 +785,7 @@ with st.sidebar:
 
     st.divider()
 
-    # PDF Upload
+    # pdf-upload
     st.markdown('<div class="sidebar-section">Dokument hinzufügen</div>', unsafe_allow_html=True)
     uploaded_file = st.file_uploader(
         "PDF hochladen",
@@ -814,14 +814,14 @@ with st.sidebar:
                 st.info("Dokument bereits vorhanden.")
             else:
                 st.error(f"Fehler: {result.get('message', 'Unbekannt')}")
-            # Uploader zurücksetzen
+            # uploader zurücksetzen
             st.session_state.uploader_key += 1
             st.rerun()
 
 
-# ── Hauptbereich ──
+# bereich: hauptbereich
 
-# ── Startscreen (kein Modus ausgewählt) ──
+# bereich: startscreen (kein modus ausgewählt)
 if st.session_state.mode is None:
     st.markdown("""
     <div class="main-header">
@@ -858,12 +858,12 @@ if st.session_state.mode is None:
             "Die Wissensbasis ist leer. Bitte lade PDFs hoch, um den Assistenten nutzen zu können."
         )
 
-# ── Chat-Modus ──
+# bereich: chat-modus
 elif st.session_state.mode == "Chat":
 
     st.markdown('<div class="mode-badge mode-badge-chat">💬 Chat-Modus</div>', unsafe_allow_html=True)
 
-    # Welcome Screen wenn kein Chat-Verlauf
+    # welcome-screen wenn noch kein chat-verlauf da ist
     if not st.session_state.chat_history:
         st.markdown("""
         <div class="main-header">
@@ -898,19 +898,19 @@ elif st.session_state.mode == "Chat":
                 "Die Wissensbasis ist leer. Bitte lade PDFs hoch, um den Assistenten nutzen zu können."
             )
 
-    # Chat-Verlauf anzeigen
+    # chat-verlauf anzeigen
     for msg in st.session_state.chat_history:
         with st.chat_message(msg["role"], avatar="🧑" if msg["role"] == "user" else "🎓"):
             st.markdown(msg["content"])
 
-    # Chat-Eingabe
+    # chat-eingabe
     if prompt := st.chat_input("Stelle eine Frage zur Kfz-Haftpflichtversicherung..."):
         st.session_state.chat_history.append({"role": "user", "content": prompt})
         with st.chat_message("user", avatar="🧑"):
             st.markdown(prompt)
 
         with st.chat_message("assistant", avatar="🎓"):
-            # Prüfen ob es eine Begrüßung/Smalltalk ist
+            # prüfen, ob es nur eine begrüßung oder smalltalk ist
             if is_greeting(prompt):
                 answer = generate_greeting_response(
                     prompt,
@@ -940,7 +940,7 @@ elif st.session_state.mode == "Chat":
 
             st.markdown(answer)
 
-            # Quellen nur anzeigen wenn die Antwort tatsächlich auf Kontext basiert
+            # quellen nur zeigen, wenn die antwort wirklich auf kontext basiert
             answer_lower = answer.lower()
             show_sources = context_chunks and not any(h in answer_lower for h in NO_ANSWER_HINTS)
 
@@ -965,7 +965,7 @@ elif st.session_state.mode == "Chat":
             save_chat_message(st.session_state.session_id, "user", prompt)
             save_chat_message(st.session_state.session_id, "assistant", answer)
 
-# ── Quiz-Modus ──
+# bereich: quiz-modus
 elif st.session_state.mode == "Quiz":
     st.markdown('<div class="mode-badge mode-badge-quiz">🧠 Quiz-Modus</div>', unsafe_allow_html=True)
     st.markdown("""
@@ -976,7 +976,7 @@ elif st.session_state.mode == "Quiz":
     </div>
     """, unsafe_allow_html=True)
 
-    # Welcome-Karten wenn noch keine Frage generiert
+    # welcome-karten, wenn noch keine frage erzeugt wurde
     if not st.session_state.quiz_data and st.session_state.quiz_score["total"] == 0:
         st.markdown("""
         <div class="welcome-grid">
@@ -998,7 +998,7 @@ elif st.session_state.mode == "Quiz":
         </div>
         """, unsafe_allow_html=True)
 
-    # Score anzeigen
+    # score anzeigen
     score = st.session_state.quiz_score
     if score["total"] > 0:
         pct = score["correct"] / score["total"]
@@ -1009,7 +1009,7 @@ elif st.session_state.mode == "Quiz":
         """, unsafe_allow_html=True)
         st.progress(pct)
 
-    # Quiz-Thema
+    # quiz-thema
     col1, col2 = st.columns([3, 1])
     with col1:
         quiz_topic = st.text_input(
@@ -1021,7 +1021,7 @@ elif st.session_state.mode == "Quiz":
     with col2:
         generate_btn = st.button("Neue Frage", type="primary", use_container_width=True)
 
-    # Enter im Textfeld oder Button-Klick generiert neue Frage
+    # enter im textfeld oder button-klick erzeugt eine neue frage
     topic_submitted = quiz_topic and quiz_topic != st.session_state.get("last_quiz_topic", "")
     if generate_btn or topic_submitted:
         if topic_submitted:
@@ -1034,7 +1034,7 @@ elif st.session_state.mode == "Quiz":
             else:
                 st.error("Konnte keine Frage generieren. Ist die Wissensbasis gefuellt?")
 
-    # Frage anzeigen
+    # frage anzeigen
     if st.session_state.quiz_data:
         qd = st.session_state.quiz_data
 
@@ -1094,12 +1094,12 @@ elif st.session_state.mode == "Quiz":
 
             st.info(f"**Erklärung:** {qd['explanation']}")
 
-# ── Sparring-Modus (Sokratisch) ──
+# bereich: sparring-modus (sokratisch)
 elif st.session_state.mode == "Sparring":
 
     st.markdown('<div class="mode-badge mode-badge-sparring">⚡ Sparring-Modus</div>', unsafe_allow_html=True)
 
-    # Welcome Screen wenn kein Chat-Verlauf
+    # welcome-screen wenn noch kein chat-verlauf da ist
     if not st.session_state.chat_history:
         st.markdown("""
         <div class="main-header">
@@ -1129,12 +1129,12 @@ elif st.session_state.mode == "Sparring":
         </div>
         """, unsafe_allow_html=True)
 
-    # Chat-Verlauf anzeigen
+    # chat-verlauf anzeigen
     for msg in st.session_state.chat_history:
         with st.chat_message(msg["role"], avatar="🧑" if msg["role"] == "user" else "⚡"):
             st.markdown(msg["content"])
 
-    # Chat-Eingabe
+    # chat-eingabe
     if prompt := st.chat_input("Stelle eine Frage — ich helfe dir, die Antwort selbst zu finden..."):
         st.session_state.chat_history.append({"role": "user", "content": prompt})
         with st.chat_message("user", avatar="🧑"):
@@ -1170,7 +1170,7 @@ elif st.session_state.mode == "Sparring":
 
             st.markdown(answer)
 
-            # Quellen im Sparring-Modus anzeigen (gleiche Logik wie Chat)
+            # quellen im sparring-modus anzeigen (gleiche logik wie im chat)
             answer_lower = answer.lower()
             show_sources = context_chunks and not any(h in answer_lower for h in NO_ANSWER_HINTS)
 

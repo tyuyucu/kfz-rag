@@ -8,7 +8,7 @@ def get_connection():
 
 
 def init_db():
-    """Erstellt alle benötigten Tabellen und Extensions."""
+    """legt alle nötigen tabellen und erweiterungen an."""
     conn = get_connection()
     try:
         cur = conn.cursor()

@@ -9,14 +9,14 @@ client = OpenAI(api_key=OPENAI_API_KEY)
 
 
 def generate_quiz_question(topic: str | None = None) -> dict | None:
-    """Generiert eine Multiple-Choice-Frage basierend auf der Wissensbasis.
+    """erstellt eine multiple-choice-frage aus der wissensbasis.
 
-    Returns: dict mit keys: question, options (list), correct_index, explanation, source
+    rückgabe: dict mit question, options, correct_index, explanation und source.
     """
     if topic:
         query = topic
     else:
-        # Zufälliges Thema aus der Wissensbasis wählen
+        # zufälliges thema aus der wissensbasis nehmen
         sample_topics = [
             "Haftpflichtversicherung Deckungsumfang",
             "Pflichtversicherungsgesetz",
@@ -70,7 +70,7 @@ def generate_quiz_question(topic: str | None = None) -> dict | None:
             answer_text = answer_text.split("```")[1].split("```")[0].strip()
 
         quiz_data = json.loads(answer_text)
-        # Alle verwendeten Quellen auflisten (dedupliziert)
+        # alle verwendeten quellen einmalig auflisten
         sources = []
         seen = set()
         for c in chunks:

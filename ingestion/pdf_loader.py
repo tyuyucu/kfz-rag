@@ -1,11 +1,11 @@
-import fitz  # PyMuPDF
+import fitz  # pdf lesen mit pymupdf
 import hashlib
 
 
 def extract_text_from_pdf(filepath: str) -> list[dict]:
-    """Extrahiert Text seitenweise aus einer PDF-Datei.
+    """liest den text aus einer pdf seite für seite aus.
 
-    Returns: Liste von dicts mit keys: page_number, text
+    rückgabe: liste mit page_number und text.
     """
     doc = fitz.open(filepath)
     pages = []
@@ -31,7 +31,7 @@ def get_page_count(filepath: str) -> int:
 
 
 def compute_file_hash(filepath: str) -> str:
-    """Berechnet SHA-256 Hash einer Datei für Änderungserkennung."""
+    """berechnet einen sha-256 hash der datei zum vergleichen."""
     sha256 = hashlib.sha256()
     with open(filepath, "rb") as f:
         for block in iter(lambda: f.read(8192), b""):

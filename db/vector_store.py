@@ -2,7 +2,7 @@ from db.database import get_connection
 
 
 def insert_chunks(document_id: int, chunks: list[dict]):
-    """Fügt Chunks mit Embeddings in die Datenbank ein."""
+    """speichert abschnitte mit embeddings in der datenbank."""
     conn = get_connection()
     try:
         cur = conn.cursor()
@@ -21,7 +21,7 @@ def insert_chunks(document_id: int, chunks: list[dict]):
 
 
 def semantic_search(query_embedding: list[float], top_k: int = 20) -> list[dict]:
-    """Semantische Suche via Cosine Similarity."""
+    """sucht passende abschnitte über semantische ähnlichkeit."""
     conn = get_connection()
     try:
         cur = conn.cursor()
@@ -49,7 +49,7 @@ def semantic_search(query_embedding: list[float], top_k: int = 20) -> list[dict]
 
 
 def fulltext_search(query: str, top_k: int = 20) -> list[dict]:
-    """PostgreSQL Full-Text-Search mit deutschem Woerterbuch."""
+    """macht eine volltextsuche in postgres mit deutschem wörterbuch."""
     conn = get_connection()
     try:
         cur = conn.cursor()

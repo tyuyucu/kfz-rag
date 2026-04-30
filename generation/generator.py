@@ -35,16 +35,16 @@ REGELN:
 
 
 def is_greeting(query: str) -> bool:
-    """Prüft ob eine Nachricht eine reine Begrüßung oder Smalltalk ist.
+    """prüft, ob eine nachricht nur begrüßung oder smalltalk ist.
 
-    Gibt nur True zurück wenn die Nachricht KURZ ist und nur Begrüßung enthält.
-    Nachrichten mit Fachfragen nach der Begrüßung werden nicht als Greeting erkannt.
+    gibt nur true zurück, wenn die nachricht kurz ist und nur grüße enthält.
+    nachrichten mit fachfrage nach der begrüßung zählen nicht als greeting.
     """
     query_lower = query.strip().lower().rstrip("!?.,:; ")
-    # Nur kurze Nachrichten (max 60 Zeichen) können reine Begrüßungen sein
+    # nur kurze nachrichten (max 60 zeichen) sind reine begrüßungen
     if len(query_lower) > 60:
         return False
-    # Optionale Präfixe entfernen ("ja danke dir" → "danke dir")
+    # optionale präfixe entfernen ("ja danke dir" -> "danke dir")
     prefixes = ["ja ", "ok ", "okay ", "jo ", "jap ", "gut ", "super ", "klar "]
     cleaned = query_lower
     for prefix in prefixes:
@@ -65,7 +65,7 @@ def is_greeting(query: str) -> bool:
 
 
 def generate_greeting_response(query: str, chat_history: list[dict] | None = None) -> str:
-    """Generiert eine freundliche Antwort auf Begrüßungen ohne RAG."""
+    """gibt eine kurze freundliche antwort auf begrüßungen ohne rag."""
     messages = [{"role": "system", "content": GREETING_PROMPT}]
 
     if chat_history:
@@ -88,7 +88,7 @@ def generate_sparring_response(
     context_chunks: list[dict],
     chat_history: list[dict] | None = None
 ) -> str:
-    """Generiert eine sokratische Antwort — keine direkten Antworten, nur Gegenfragen."""
+    """gibt eine sokratische antwort mit gegenfragen statt direkter lösung."""
     context_text = "\n\n---\n\n".join(
         f"[Quelle: {c['filename']}, Seite {c['page_number']}]\n{c['content']}"
         for c in context_chunks
@@ -120,7 +120,7 @@ def generate_answer(
     context_chunks: list[dict],
     chat_history: list[dict] | None = None
 ) -> str:
-    """Generiert eine Antwort basierend auf den Kontext-Chunks."""
+    """gibt eine antwort auf basis der gefundenen kontext-abschnitte."""
     context_text = "\n\n---\n\n".join(
         f"[Quelle: {c['filename']}, Seite {c['page_number']}]\n{c['content']}"
         for c in context_chunks
