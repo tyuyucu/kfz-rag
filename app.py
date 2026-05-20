@@ -194,29 +194,37 @@ def _ls_mount() -> None:
 
 
 def _ls_call_setitem(item_key: str, item_value: str) -> bool:
-    """schreibt direkt via component aufruf in localstorage
-    component-key pro item damit verschiedene setItems nicht ueber einander schreiben
+    """schreibt direkt via injected js statt ueber das component
+    das component-setItem verursacht in der aktuellen streamlit-version
+    sporadisch ein renderer-freeze - direktes js ist robust
+    iframe von components.v1.html laeuft same-origin und teilt sich
+    localStorage mit der main-page, JS schreibt sofort beim mount
     """
     try:
-        _ls_component(
-            method="setItem",
-            itemKey=item_key,
-            itemValue=item_value,
-            key=f"_ls_set_{item_key}",
+        js = (
+            "<script>"
+            "try { localStorage.setItem("
+            + json.dumps(item_key) + ", " + json.dumps(item_value)
+            + "); } catch (e) { console.error(e); }"
+            "</script>"
         )
+        st.components.v1.html(js, height=0)
         return True
     except Exception:
         return False
 
 
 def _ls_call_deleteitem(item_key: str) -> bool:
-    """loescht direkt via component aufruf in localstorage"""
+    """loescht direkt via injected js"""
     try:
-        _ls_component(
-            method="deleteItem",
-            itemKey=item_key,
-            key=f"_ls_del_{item_key}",
+        js = (
+            "<script>"
+            "try { localStorage.removeItem("
+            + json.dumps(item_key)
+            + "); } catch (e) { console.error(e); }"
+            "</script>"
         )
+        st.components.v1.html(js, height=0)
         return True
     except Exception:
         return False
@@ -256,17 +264,29 @@ def _ls_get(key: str) -> str | None:
 
 def _ls_set(key: str, value: str) -> None:
     """wert in localstorage schreiben
-    direkter component-aufruf statt LocalStorage-wrapper damit kein deadlock
-    der frontend wickelt den wert als {key: value} ein das wickelt _ls_get
-    beim lesen wieder aus - storage_init ist widget-bound darum kein direktes
-    schreiben in den cache, naechster render liest frisch aus iframe
+    js-iframe macht den eigentlichen schreibzugriff in localstorage
+    parallel mutieren wir das storage_init-dict damit _ls_get im naechsten
+    render sofort den neuen wert sieht ohne auf das iframe-getAll zu warten
+    (reassignen von session_state[key] ist verboten weil widget-bound, dict-mutation ist ok)
     """
     _ls_call_setitem(key, value)
+    try:
+        storage = st.session_state.get("storage_init")
+        if isinstance(storage, dict):
+            storage[key] = value
+    except Exception:
+        pass
 
 
 def _ls_delete(key: str) -> None:
     """eintrag aus localstorage entfernen"""
     _ls_call_deleteitem(key)
+    try:
+        storage = st.session_state.get("storage_init")
+        if isinstance(storage, dict):
+            storage.pop(key, None)
+    except Exception:
+        pass
 
 
 def _chats_storage_key(mode: str | None) -> str:
@@ -324,11 +344,18 @@ def _save_chat(mode: str | None, chat_id: str, messages: list[dict]) -> None:
 
 
 def _delete_chat(mode: str | None, chat_id: str) -> None:
-    """entfernt einen einzelnen chat aus der liste"""
+    """entfernt einen einzelnen chat aus der liste
+    nur wenn die zu loeschende chat-id auch wirklich in der geladenen liste steht
+    sonst wuerde ein leerer cache (z.b. wenn das iframe noch nicht zurueck ist)
+    die gesamte liste in localstorage ueberschreiben
+    """
     if not mode or mode == "Quiz":
         return
     try:
         chats = _load_chats(mode)
+        if not any(c.get("id") == chat_id for c in chats):
+            # chat nicht in der bekannten liste - cache ist u u stale, lieber nichts loeschen
+            return
         chats = [c for c in chats if c.get("id") != chat_id]
         _ls_set(_chats_storage_key(mode), json.dumps(chats))
     except Exception:
@@ -1481,6 +1508,9 @@ with st.sidebar:
                             if _is_active:
                                 st.session_state.chat_history = []
                                 st.session_state.current_chat_id = None
+                            # kurze pause damit das js-iframe noch geladen wird
+                            # und localStorage.setItem ausfuehren kann bevor rerun
+                            time.sleep(0.3)
                             st.rerun()
 
     st.divider()
