@@ -100,18 +100,49 @@ def _prefetch_next_quiz(session_id: int, topic: str | None) -> None:
     t.start()
 
 
-def _pop_prefetched_quiz(session_id: int, topic: str | None):
-    """liefert das prefetched ergebnis falls fuer session und topic vorhanden
-    sonst None
+def _warmup_reranker_async() -> None:
+    """laed den reranker beim app-start im hintergrund
+    damit der erste retrieve-call nicht den cold-start hat (~5-10s)
     """
-    with _prefetch_lock:
-        entry = _prefetch_results.pop(session_id, None)
-    if entry is None:
-        return None
-    data, error, prefetch_topic = entry
-    if prefetch_topic != topic:
-        return None
-    return data, error
+    if st.session_state.get("_reranker_warmup_started"):
+        return
+    st.session_state._reranker_warmup_started = True
+    if add_script_run_ctx is None or get_script_run_ctx is None:
+        return
+    ctx = get_script_run_ctx()
+    if ctx is None:
+        return
+
+    def worker():
+        try:
+            add_script_run_ctx(threading.current_thread(), ctx)
+        except Exception:
+            pass
+        try:
+            from retrieval.reranker import get_reranker
+            get_reranker()  # triggert das lazy-load
+        except Exception:
+            pass
+
+    threading.Thread(target=worker, daemon=True).start()
+
+
+def _pop_prefetched_quiz(session_id: int, topic: str | None, *, wait_ms: int = 0):
+    """liefert das prefetched ergebnis falls fuer session und topic vorhanden
+    wartet bis zu wait_ms millisekunden falls der background-thread noch laeuft
+    """
+    deadline = time.time() + wait_ms / 1000
+    while True:
+        with _prefetch_lock:
+            entry = _prefetch_results.pop(session_id, None)
+        if entry is not None:
+            data, error, prefetch_topic = entry
+            if prefetch_topic != topic:
+                return None
+            return data, error
+        if time.time() >= deadline:
+            return None
+        time.sleep(0.05)
 
 
 # ── chats clientseitig im browser-localstorage halten ──
@@ -1141,6 +1172,10 @@ if db_connected and not _setup_completed():
     st.stop()
 
 
+# reranker im hintergrund vorladen damit der erste retrieve schnell ist
+_warmup_reranker_async()
+
+
 # ── juengsten chat aus localStorage wiederherstellen ──
 # nur wenn chat-history leer ist (also der user gerade in den mode eingestiegen ist)
 # das streamlit-local-storage-component braucht ein bis zwei reruns
@@ -1226,45 +1261,46 @@ with st.sidebar:
         st.rerun()
 
     # ── vergangene chats (nur in chat- und sparring-modus) ──
+    # in einem expander damit das kompakte sidebar-expander-styling greift
     if st.session_state.mode in ("Chat", "Sparring"):
         _past_chats = _load_chats(st.session_state.mode)
         if _past_chats:
-            st.markdown(
-                '<div class="sidebar-section">Vergangene Chats</div>',
-                unsafe_allow_html=True,
-            )
-            for _chat in _past_chats:
-                _cid = _chat.get("id", "")
-                _title = _chat.get("title", "Chat") or "Chat"
-                if len(_title) > 32:
-                    _title = _title[:29] + "…"
-                _is_active = _cid == st.session_state.current_chat_id
-                _prefix = "▶ " if _is_active else ""
-                col_a, col_b = st.columns([6, 1])
-                with col_a:
-                    if st.button(
-                        f"{_prefix}{_title}",
-                        key=f"loadchat_{_cid}",
-                        use_container_width=True,
-                        disabled=_is_active,
-                    ):
-                        st.session_state.chat_history = _chat.get("messages", [])
-                        st.session_state.current_chat_id = _cid
-                        st.session_state.session_id = create_chat_session()
-                        # restore-flag setzen damit der juengste nicht ueberschreibt
-                        st.session_state[f"_ls_restored_{st.session_state.mode}"] = True
-                        st.rerun()
-                with col_b:
-                    if st.button(
-                        "✕",
-                        key=f"delchat_{_cid}",
-                        help="Chat löschen",
-                    ):
-                        _delete_chat(st.session_state.mode, _cid)
-                        if _is_active:
-                            st.session_state.chat_history = []
-                            st.session_state.current_chat_id = None
-                        st.rerun()
+            with st.expander(
+                f"Vergangene Chats ({len(_past_chats)})",
+                expanded=True,
+            ):
+                for _chat in _past_chats:
+                    _cid = _chat.get("id", "")
+                    _title = _chat.get("title", "Chat") or "Chat"
+                    if len(_title) > 28:
+                        _title = _title[:25] + "…"
+                    _is_active = _cid == st.session_state.current_chat_id
+                    _prefix = "▶ " if _is_active else ""
+                    col_a, col_b = st.columns([5, 1])
+                    with col_a:
+                        if st.button(
+                            f"{_prefix}{_title}",
+                            key=f"loadchat_{_cid}",
+                            use_container_width=True,
+                            disabled=_is_active,
+                        ):
+                            st.session_state.chat_history = _chat.get("messages", [])
+                            st.session_state.current_chat_id = _cid
+                            st.session_state.session_id = create_chat_session()
+                            # restore-flag setzen damit der juengste nicht ueberschreibt
+                            st.session_state[f"_ls_restored_{st.session_state.mode}"] = True
+                            st.rerun()
+                    with col_b:
+                        if st.button(
+                            "✕",
+                            key=f"delchat_{_cid}",
+                            help="Chat löschen",
+                        ):
+                            _delete_chat(st.session_state.mode, _cid)
+                            if _is_active:
+                                st.session_state.chat_history = []
+                                st.session_state.current_chat_id = None
+                            st.rerun()
 
     st.divider()
 
@@ -1785,11 +1821,15 @@ elif st.session_state.mode == "Quiz":
             st.session_state.last_quiz_topic = quiz_topic
 
         # check ob im hintergrund schon eine frage vorgeneriert wurde
-        # nur nutzen wenn topic passt (sonst wuerde der user eine alte frage sehen)
+        # bis zu 4 sekunden warten falls der thread noch laeuft
+        # passt das prefetched-topic nicht oder thread crashed: synchron generieren
         prefetched_data = None
+        current_topic = quiz_topic if quiz_topic else None
         if st.session_state.session_id is not None:
-            current_topic = quiz_topic if quiz_topic else None
-            popped = _pop_prefetched_quiz(st.session_state.session_id, current_topic)
+            with st.spinner("Naechste Frage wird geladen..."):
+                popped = _pop_prefetched_quiz(
+                    st.session_state.session_id, current_topic, wait_ms=4000
+                )
             if popped is not None:
                 data, _err = popped
                 if data is not None:
@@ -1801,9 +1841,7 @@ elif st.session_state.mode == "Quiz":
             st.session_state.quiz_answered = False
         else:
             with st.spinner("Generiere Frage..."):
-                quiz_data, quiz_error = generate_quiz_question(
-                    quiz_topic if quiz_topic else None
-                )
+                quiz_data, quiz_error = generate_quiz_question(current_topic)
                 if quiz_data:
                     st.session_state.quiz_data = quiz_data
                     st.session_state.quiz_answered = False
