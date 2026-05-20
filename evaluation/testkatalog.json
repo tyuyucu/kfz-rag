@@ -1,0 +1,468 @@
+{
+  "meta": {
+    "beschreibung": "Funktionaler Testkatalog zur technischen Artefakt-Evaluation des Kfz-RAG-Systems. Kein Goldstandard im empirischen Sinn — die Referenzantworten dienen der Konfigurations- und Kennzahlenerhebung im Rahmen der Design-Science-Research-Evaluation.",
+    "methodik": "Fragen und Referenz-Kontexte wurden aus den PDFs in documents/ (Skript_KFZ_2023.pdf, Vorlesung_KFZ_Heetkamp.pdf, AKB-2025.pdf) extrahiert. Wörtliche Zitate in 'referenz_kontext'.",
+    "anzahl_fragen": 40,
+    "fragetypen": {"factual": 20, "application": 10, "conceptual": 6, "case_law": 4},
+    "schwierigkeit": {"easy": 12, "medium": 20, "hard": 8},
+    "themen_verteilung": {
+      "direktanspruch_regress": 8,
+      "obliegenheiten_vor_versicherungsfall": 7,
+      "risikoausschlüsse": 5,
+      "betrieb_gebrauch_stVG": 5,
+      "vorläufige_deckung": 4,
+      "haftungsverteilung_mitverschulden": 4,
+      "regulierungsermessen": 3,
+      "pflVG_schutzzweck": 4
+    }
+  },
+  "fragen": [
+    {
+      "id": "Q001",
+      "frage": "Auf welcher Anspruchsgrundlage kann sich der geschädigte Dritte bei einem Verkehrsunfall unmittelbar an den Kfz-Haftpflichtversicherer des Schädigers wenden?",
+      "referenz_antwort": "Aus § 115 VVG steht dem geschädigten Dritten ein Direktanspruch gegen den Kfz-Haftpflichtversicherer des Schädigers zu. Er kann seinen Schaden also unmittelbar gegenüber dem Versicherer geltend machen — beschränkt auf den Umfang der Halterhaftung nach § 7 Abs. 1 StVG.",
+      "referenz_kontext": "besteht zu Gunsten des F der Direktanspruch gem. §115 VVG. Er kann also seinen Schaden der X-Versicherung gegenüber geltend machen, jedoch nur im Rahmen der Halterhaftung des A gem. § 7 Abs. 1 StVG.",
+      "quelle_dokument": "Skript_KFZ_2023.pdf",
+      "quelle_abschnitt": "Abschnitt 5 (Regress), S. 42",
+      "fragetyp": "factual",
+      "schwierigkeit": "easy",
+      "thema": "direktanspruch_regress"
+    },
+    {
+      "id": "Q002",
+      "frage": "Auf welche Höhe ist der Regress des Kfz-Haftpflichtversicherers gegen den Versicherungsnehmer bei einer Obliegenheitsverletzung maximal begrenzt?",
+      "referenz_antwort": "Nach § 5 Abs. 3 KfzPflVV in Verbindung mit D.2.3 AKB ist die Leistungsfreiheit des Versicherers in der Kfz-Haftpflichtversicherung auf höchstens 5.000 Euro je Versicherungsfall beschränkt. Der Regress gegen den VN ist damit auf diesen Betrag limitiert.",
+      "referenz_kontext": "Gem. § 5 Abs. 3 KfzPflVV darf die Leistungsfreiheit höchstens auf 5.000 Euro beschränkt werden.",
+      "quelle_dokument": "AKB-2025.pdf",
+      "quelle_abschnitt": "D.2.3 AKB, Fußnote 1, S. 30",
+      "fragetyp": "factual",
+      "schwierigkeit": "easy",
+      "thema": "direktanspruch_regress"
+    },
+    {
+      "id": "Q003",
+      "frage": "Welche Anspruchsgrundlage nutzt der Kfz-Haftpflichtversicherer für den Regress im Innenverhältnis gegen den Versicherungsnehmer nach einer Regulierung an den geschädigten Dritten?",
+      "referenz_antwort": "Anspruchsgrundlage für den Regress ist § 116 Abs. 1 Satz 2 VVG. Der Versicherer kann nach Leistung an den geschädigten Dritten im Innenverhältnis vom VN Rückgriff nehmen — jedoch nach § 5 Abs. 3 KfzPflVV und D.2.3 AKB begrenzt auf 5.000 Euro bei Obliegenheitsverletzungen.",
+      "referenz_kontext": "Regress: Allerdings kommt ein Regress im Innenverhältnis gegen den VN in Betracht. Anspruchsgrundlage hierzu ist § 116 I Satz 2 VVG. Aus D.2.3 AKB in Verbindung mit § 5 Abs. 2 KfzPflVV folgt die Limitierung einer etwaigen Leistungsfreiheit auf 5.000 Euro.",
+      "quelle_dokument": "Skript_KFZ_2023.pdf",
+      "quelle_abschnitt": "Abschnitt 5.2 Regress, S. 78",
+      "fragetyp": "application",
+      "schwierigkeit": "medium",
+      "thema": "direktanspruch_regress"
+    },
+    {
+      "id": "Q004",
+      "frage": "Kann der Kfz-Haftpflichtversicherer dem geschädigten Dritten eine Leistungsfreiheit wegen Obliegenheitsverletzung des Versicherungsnehmers entgegenhalten?",
+      "referenz_antwort": "Nein. Nach § 117 Abs. 1 VVG kann die Leistungsfreiheit gegenüber dem VN dem geschädigten Dritten nicht entgegengehalten werden. Der Versicherer ist daher zur Regulierung gegenüber dem Dritten verpflichtet und kann die Obliegenheitsverletzung nur im Regress gegen den VN geltend machen.",
+      "referenz_kontext": "Aufgrund von § 115 VVG (Direktanspruch) und § 117 I VVG (Leistungsfreiheit kann dem Geschädigten Dritten nicht entgegengehalten werden) ist der Kfz-Haftpflichtversicherer zur Regulierung des verursachten Unfallschadens an den Dritten verpflichtet.",
+      "quelle_dokument": "Skript_KFZ_2023.pdf",
+      "quelle_abschnitt": "Abschnitt 5 Regress, S. 78",
+      "fragetyp": "application",
+      "schwierigkeit": "medium",
+      "thema": "direktanspruch_regress"
+    },
+    {
+      "id": "Q005",
+      "frage": "Worin unterscheiden sich Risikoausschlüsse nach § 117 Abs. 3 Satz 1 VVG von Obliegenheitsverletzungen hinsichtlich des Direktanspruchs des Dritten?",
+      "referenz_antwort": "Bei Risikoausschlüssen ist der Versicherer gegenüber dem geschädigten Dritten nicht leistungspflichtig, denn Risikoausschlüsse sind nicht Teil der vom Versicherer übernommenen Gefahr. Nach § 117 Abs. 3 Satz 1 VVG leistet der Versicherer auch im Fall des § 117 Abs. 1 VVG nur im Rahmen der übernommenen Gefahr. Bei Obliegenheitsverletzungen bleibt der Versicherer dagegen gegenüber dem Dritten leistungspflichtig und kann nur im Innenverhältnis Regress nehmen.",
+      "referenz_kontext": "Das gilt aber nur in den Grenzen von § 117 Abs. 3 Satz 1 VVG. Danach ist auch im Fall von § 117 Abs. 1 VVG der Versicherer nur im Rahmen der vorgeschriebenen Mindestversicherungssumme und der von ihm übernommenen Gefahr zur Leistung verpflichtet. Risikoausschlüsse sind aber gerade nicht teil der vom VR übernommenen Gefahr — daher ist der VR auch gegenüber dem geschädigten Dritten immer dann nicht zur Leistung verpflichtet, wenn ein Risikoausschluss eingreift.",
+      "quelle_dokument": "Skript_KFZ_2023.pdf",
+      "quelle_abschnitt": "Abschnitt 5 Risikoausschlüsse, S. 39",
+      "fragetyp": "conceptual",
+      "schwierigkeit": "hard",
+      "thema": "direktanspruch_regress"
+    },
+    {
+      "id": "Q006",
+      "frage": "Wie lange besteht die Nachhaftung des Kfz-Haftpflichtversicherers nach Beendigung des Versicherungsvertrags und welche Norm regelt dies?",
+      "referenz_antwort": "Die Nachhaftung besteht bis zu einem Monat nach der Mitteilung des Versicherers an die Zulassungsbehörde nach § 25 FZV. Während dieser Zeit hat die Zulassungsbehörde Gelegenheit, das Kennzeichen zu entstempeln und die Zulassung zurückzunehmen.",
+      "referenz_kontext": "seit einer diesbezüglichen Mitteilung des Versicherers an die Zulassungsbehörde gem. § 25 FZV nicht mehr als ein Monat vergangen ist (Nachhaftung). Während dieser Zeit hat die Zulassungsbehörde Zeit, das Kennzeichen zu entstempeln und die Zulassung zurückzunehmen.",
+      "quelle_dokument": "Skript_KFZ_2023.pdf",
+      "quelle_abschnitt": "Abschnitt 5.1 Nachhaftung, S. 67",
+      "fragetyp": "factual",
+      "schwierigkeit": "easy",
+      "thema": "direktanspruch_regress"
+    },
+    {
+      "id": "Q007",
+      "frage": "Ein Schwarzfahrer verursacht mit dem Fahrzeug des Halters A einen Personenschaden bei Dritten. Wie reguliert die Kfz-Haftpflichtversicherung und besteht ein Regressanspruch?",
+      "referenz_antwort": "Der geschädigte Dritte kann seinen Direktanspruch nach § 115 VVG gegen die Versicherung des Halters geltend machen, da A nach § 7 Abs. 1 StVG als Halter haftet. Die Versicherung hat zu regulieren. Gegen den Schwarzfahrer besteht ein Rückgriffsanspruch aus § 812 BGB, weil der Schwarzfahrer durch die Entschädigungszahlung von seiner Schuld befreit wurde.",
+      "referenz_kontext": "Ergebnis: Für A muss die X-Versicherung eintreten und den Schaden regulieren. Gegenüber D hat die X-Versicherung einen Rückgriffsanspruch aus § 812 BGB, da D durch die Entschädigungszahlung von seiner Schuld dem F gegenüber befreit worden ist.",
+      "quelle_dokument": "Skript_KFZ_2023.pdf",
+      "quelle_abschnitt": "Fallbeispiel Schwarzfahrt, S. 42",
+      "fragetyp": "application",
+      "schwierigkeit": "hard",
+      "thema": "direktanspruch_regress"
+    },
+    {
+      "id": "Q008",
+      "frage": "An welche Einrichtung kann sich ein Unfallopfer wenden, wenn kein leistungspflichtiger Kfz-Haftpflichtversicherer zur Verfügung steht?",
+      "referenz_antwort": "Das Opfer kann sich an die Verkehrsopferhilfe nach §§ 12 ff. PflVG wenden. Diese fungiert als Entschädigungsfonds mit subsidiärer Haftung für Fälle, in denen kein Versicherer eintritt (z. B. bei unbekanntem Fahrzeug oder fehlendem Versicherungsvertrag).",
+      "referenz_kontext": "selbst tragen bzw. kann sich das Opfer an die Verkehrsopferhilfe wenden (§ 12 PflVG). [...] Verkehrsopferhilfe (§ 12 PflVG, sog. Entschädigungsfonds mit subsidiärer Haftung)",
+      "quelle_dokument": "Skript_KFZ_2023.pdf",
+      "quelle_abschnitt": "Fallbeispiel Folgebeitrag, S. 69",
+      "fragetyp": "factual",
+      "schwierigkeit": "easy",
+      "thema": "direktanspruch_regress"
+    },
+
+    {
+      "id": "Q009",
+      "frage": "Welche Pflicht regelt D.1.1.3 AKB hinsichtlich der Fahrerlaubnis?",
+      "referenz_antwort": "Nach D.1.1.3 AKB darf der Fahrer das Fahrzeug auf öffentlichen Wegen oder Plätzen nur mit der erforderlichen Fahrerlaubnis benutzen. Außerdem darf der VN, Halter oder Eigentümer das Fahrzeug nicht von einem Fahrer benutzen lassen, der nicht die erforderliche Fahrerlaubnis hat.",
+      "referenz_kontext": "D.1.1.3 Der Fahrer des Fahrzeugs darf das Fahrzeug auf öffentlichen Wegen oder Plätzen nur mit der erforderlichen Fahrerlaubnis benutzen. Außerdem dürfen Sie, der Halter oder der Eigentümer das Fahrzeug nicht von einem Fahrer benutzen lassen, der nicht die erforderliche Fahrerlaubnis hat.",
+      "quelle_dokument": "AKB-2025.pdf",
+      "quelle_abschnitt": "D.1.1.3, S. 29",
+      "fragetyp": "factual",
+      "schwierigkeit": "easy",
+      "thema": "obliegenheiten_vor_versicherungsfall"
+    },
+    {
+      "id": "Q010",
+      "frage": "Welche Pflicht regelt D.1.2.1 AKB hinsichtlich alkoholischer Getränke?",
+      "referenz_antwort": "D.1.2.1 AKB verbietet dem Fahrer das Führen des Fahrzeugs, wenn er durch alkoholische Getränke oder andere berauschende Mittel nicht in der Lage ist, das Fahrzeug sicher zu führen. Der VN, Halter oder Eigentümer darf das Fahrzeug zudem nicht von einem solchen Fahrer führen lassen.",
+      "referenz_kontext": "D.1.2.1 Das Fahrzeug darf nicht gefahren werden, wenn der Fahrer durch alkoholische Getränke oder andere berauschende Mittel nicht in der Lage ist, das Fahrzeug sicher zu führen. Außerdem dürfen Sie, der Halter oder der Eigentümer des Fahrzeugs dieses nicht von einem Fahrer fahren lassen, der durch alkoholische Getränke oder andere berauschende Mittel nicht in der Lage ist, das Fahrzeug sicher zu führen.",
+      "quelle_dokument": "AKB-2025.pdf",
+      "quelle_abschnitt": "D.1.2.1, S. 29",
+      "fragetyp": "factual",
+      "schwierigkeit": "easy",
+      "thema": "obliegenheiten_vor_versicherungsfall"
+    },
+    {
+      "id": "Q011",
+      "frage": "Welche Rechtsfolgen sieht D.2.1 AKB bei vorsätzlicher bzw. grob fahrlässiger Pflichtverletzung vor?",
+      "referenz_antwort": "Bei vorsätzlicher Pflichtverletzung nach D.1 besteht kein Versicherungsschutz. Bei grob fahrlässiger Verletzung ist der Versicherer berechtigt, seine Leistung in einem der Schwere des Verschuldens entsprechenden Verhältnis zu kürzen (Quotenbildung). Weist der VN nach, dass er die Pflicht nicht grob fahrlässig verletzt hat, bleibt der Versicherungsschutz bestehen.",
+      "referenz_kontext": "D.2.1 Verletzen Sie vorsätzlich eine Ihrer in D.1 geregelten Pflichten, haben Sie keinen Versicherungsschutz. Verletzen Sie Ihre Pflichten grob fahrlässig, sind wir berechtigt, unsere Leistung in einem der Schwere Ihres Verschuldens entsprechenden Verhältnis zu kürzen.",
+      "quelle_dokument": "AKB-2025.pdf",
+      "quelle_abschnitt": "D.2.1, S. 30",
+      "fragetyp": "application",
+      "schwierigkeit": "medium",
+      "thema": "obliegenheiten_vor_versicherungsfall"
+    },
+    {
+      "id": "Q012",
+      "frage": "Wann ist der Versicherer trotz Pflichtverletzung nach D.2.2 AKB zur Leistung verpflichtet?",
+      "referenz_antwort": "Abweichend von D.2.1 bleibt der Versicherer zur Leistung verpflichtet, soweit die Pflichtverletzung weder für den Eintritt des Versicherungsfalls noch für den Umfang der Leistungspflicht ursächlich war (Kausalitätsgegenbeweis). Dies gilt allerdings nicht bei arglistiger Pflichtverletzung.",
+      "referenz_kontext": "D.2.2 Abweichend von D.2.1 sind wir zur Leistung verpflichtet, soweit die Pflichtverletzung weder für den Eintritt des Versicherungsfalls noch für den Umfang unserer Leistungspflicht ursächlich ist. Dies gilt nicht, wenn Sie die Pflicht arglistig verletzen.",
+      "quelle_dokument": "AKB-2025.pdf",
+      "quelle_abschnitt": "D.2.2, S. 30",
+      "fragetyp": "application",
+      "schwierigkeit": "medium",
+      "thema": "obliegenheiten_vor_versicherungsfall"
+    },
+    {
+      "id": "Q013",
+      "frage": "Wie muss der Versicherer bei Quotenbildung im Fall grob fahrlässiger Obliegenheitsverletzung im Trunkenheitsfall vorgehen, wenn parallel Kfz-Haftpflicht- und Kaskoversicherung betroffen sind?",
+      "referenz_antwort": "In Trunkenheitsfällen stellt sich die Quotenbildung in der Kfz-Haftpflicht (Regress wegen Obliegenheitsverletzung) und in der Kaskoversicherung (grob fahrlässige Herbeiführung des Versicherungsfalls) gleichzeitig. In der Regel ist in gleicher Höhe zu quotieren, da sich die Schwere des Verschuldens im einheitlichen Lebensvorgang „Verkehrsunfall“ nur einheitlich bestimmen lässt.",
+      "referenz_kontext": "kann sich bei Trunkenheitsfällen das Problem der Quotenbildung für den Versicherer in zweifacher Hinsicht stellen: In der Kfz-Haftpflichtversicherung bei der Frage des Regresses wegen einer Obliegenheitsverletzung, gleichzeitig aber auch in der Kaskoversicherung bei der Frage, wie sich die grob fahrlässige Herbeiführung des Versicherungsfalls auswirkt. Regelmäßig wird hier in gleicher Höhe zu quotieren sein, die Schwere des Verschuldens im Rahmen des einheitlichen Lebensvorgangs „Verkehrsunfall“ lässt sich nur einheitlich bestimmen.",
+      "quelle_dokument": "Skript_KFZ_2023.pdf",
+      "quelle_abschnitt": "Abschnitt Quotenbildung, S. 83",
+      "fragetyp": "conceptual",
+      "schwierigkeit": "medium",
+      "thema": "obliegenheiten_vor_versicherungsfall"
+    },
+    {
+      "id": "Q014",
+      "frage": "Der VN ermöglicht schuldhaft eine führerscheinlose Fahrt, bei der ein Personenschaden entsteht. Muss der Versicherer regulieren und darf er 5.000 Euro Regress nehmen?",
+      "referenz_antwort": "Wegen A.1.5.6 AKB muss der Versicherer die Personenschäden regulieren. Ein Abzug von 5.000 Euro wegen der Obliegenheitsverletzung ist durch die Änderung des § 5 Abs. 2 KfzPflVV (auf Basis der 5. KH-Richtlinie) nicht mehr möglich, wenn der VN, Halter oder Eigentümer als Fahrzeuginsasse — ohne selbst zu fahren — geschädigt wurde.",
+      "referenz_kontext": "Wegen A.1.5.6 muss der Versicherer die Personenschäden regulieren (BGH VersR 86, 1010). Ein Abzug in Höhe von 5.000 Euro ist nach einer auf die 5. KH-Richtlinie erfolgten Änderung des § 5 Abs. 2 KfzPflVV nicht mehr der Fall. Dort ist folgender Satz eingefügt worden: „Eine Obliegenheitsverletzung nach Absatz 1 Nr. 5 befreit den Versicherer nicht von der Leistungspflicht, soweit der VN, Halter oder Eigentümer durch den Versicherungsfall als Fahrzeuginsasse, der das Fahrzeug nicht geführt hat, geschädigt wurde.\"",
+      "quelle_dokument": "Skript_KFZ_2023.pdf",
+      "quelle_abschnitt": "Fallbeispiel führerscheinlose Fahrt, S. 52",
+      "fragetyp": "application",
+      "schwierigkeit": "hard",
+      "thema": "obliegenheiten_vor_versicherungsfall"
+    },
+    {
+      "id": "Q015",
+      "frage": "Unter welchen Voraussetzungen darf ein Fahrzeug gemäß D.1.1.2 AKB gebraucht werden?",
+      "referenz_antwort": "Nach D.1.1.2 AKB darf das Fahrzeug nur von einem berechtigten Fahrer gebraucht werden. Berechtigter Fahrer ist, wer das Fahrzeug mit Wissen und Willen des Verfügungsberechtigten gebraucht. Der VN, Halter und Eigentümer dürfen zudem nicht wissentlich ermöglichen, dass das Fahrzeug von einem unberechtigten Fahrer gebraucht wird.",
+      "referenz_kontext": "D.1.1.2 Das Fahrzeug darf nur von einem berechtigten Fahrer gebraucht werden. Berechtigter Fahrer ist, wer das Fahrzeug mit Wissen und Willen des Verfügungsberechtigten gebraucht. Außerdem dürfen Sie, der Halter oder der Eigentümer des Fahrzeugs es nicht wissentlich ermöglichen, dass das Fahrzeug von einem unberechtigten Fahrer gebraucht wird.",
+      "quelle_dokument": "AKB-2025.pdf",
+      "quelle_abschnitt": "D.1.1.2, S. 29",
+      "fragetyp": "factual",
+      "schwierigkeit": "easy",
+      "thema": "obliegenheiten_vor_versicherungsfall"
+    },
+
+    {
+      "id": "Q016",
+      "frage": "Welche Rechtsfolge regelt § 103 VVG bzw. A.1.5.1 AKB bei vorsätzlicher Herbeiführung des Versicherungsfalls?",
+      "referenz_antwort": "§ 103 VVG — umgesetzt in A.1.5.1 AKB — ist ein subjektiver Risikoausschluss. Bei vorsätzlicher und widerrechtlicher Herbeiführung des Haftungsfalls entfällt die Eintrittspflicht des Versicherers von vornherein; der Schadenfall ist nicht vom Deckungsumfang erfasst.",
+      "referenz_kontext": "§ 103 VVG (umgesetzt durch A.1.5.1 AKB) ist ein subjektiver Risikoausschluss. Er schließt die Eintrittspflicht des Versicherers für vorsätzliche, widerrechtliche Herbeiführung des Haftungsfalles aus. Der Risikoausschluss legt von vorneherein fest, dass ein durch eine Vorsatztat herbeigeführter Schadenfall nicht vom Deckungsumfang des Versicherungsvertrages erfasst ist (BGH VersR 71, 239).",
+      "quelle_dokument": "Skript_KFZ_2023.pdf",
+      "quelle_abschnitt": "Abschnitt 5 Risikoausschluss Vorsatz, S. 39",
+      "fragetyp": "factual",
+      "schwierigkeit": "medium",
+      "thema": "risikoausschlüsse"
+    },
+    {
+      "id": "Q017",
+      "frage": "Welche Schäden sind nach A.1.5.5 AKB in der Kfz-Haftpflichtversicherung ausgeschlossen und welche Sachen bilden eine Ausnahme?",
+      "referenz_antwort": "Nach A.1.5.5 AKB besteht kein Versicherungsschutz für Schadenersatzansprüche wegen Beschädigung, Zerstörung oder Abhandenkommens von Sachen, die mit dem Fahrzeug befördert werden. Versicherungsschutz besteht jedoch für Sachen, die Insassen üblicherweise mit sich führen (z. B. Kleidung, Brille, Brieftasche). Bei überwiegender Personenbeförderung zusätzlich für Reisegepäck und Reiseproviant. Keine Deckung für Sachen unberechtigter Insassen.",
+      "referenz_kontext": "A.1.5.5 Kein Versicherungsschutz besteht bei Schadenersatzansprüchen wegen Beschädigung, Zerstörung oder Abhandenkommens von Sachen, die mit dem versicherten Fahrzeug befördert werden. Versicherungsschutz besteht jedoch für Sachen, die Insassen eines Kraftfahrzeugs üblicherweise mit sich führen (z. B. Kleidung, Brille, Brieftasche).",
+      "quelle_dokument": "AKB-2025.pdf",
+      "quelle_abschnitt": "A.1.5.5, S. 8",
+      "fragetyp": "factual",
+      "schwierigkeit": "medium",
+      "thema": "risikoausschlüsse"
+    },
+    {
+      "id": "Q018",
+      "frage": "Welche Ansprüche sind nach A.1.5.6 AKB ausgeschlossen und welche Ausnahme gilt für Personenschäden?",
+      "referenz_antwort": "Nach A.1.5.6 AKB besteht kein Versicherungsschutz für Sach- oder Vermögensschäden, die eine mitversicherte Person dem VN, Halter oder Eigentümer durch den Gebrauch des Fahrzeugs zufügt. Versicherungsschutz besteht jedoch für Personenschäden — etwa wenn der VN als Beifahrer seines eigenen Fahrzeugs verletzt wird.",
+      "referenz_kontext": "A.1.5.6 Kein Versicherungsschutz besteht für Sach- oder Vermögensschäden, die eine mitversicherte Person Ihnen, dem Halter oder dem Eigentümer durch den Gebrauch des Fahrzeugs zufügt. Versicherungsschutz besteht jedoch für Personenschäden, wenn Sie z. B. als Beifahrer Ihres Fahrzeugs verletzt werden.",
+      "quelle_dokument": "AKB-2025.pdf",
+      "quelle_abschnitt": "A.1.5.6, S. 8",
+      "fragetyp": "factual",
+      "schwierigkeit": "medium",
+      "thema": "risikoausschlüsse"
+    },
+    {
+      "id": "Q019",
+      "frage": "Wie wurde der sogenannte Berliner Raserfall juristisch behandelt und welche Folgen hätte bedingter Vorsatz für den Versicherungsschutz?",
+      "referenz_antwort": "Das LG Berlin hat den Fahrer zunächst wegen Mordes verurteilt (Urt. v. 27.2.2017 — 251 Js 52-16); der BGH (NJW 2018, 1621) hat das Urteil aufgehoben, weil das LG den bedingten Vorsatz nicht sorgfältig begründet habe. Würde bedingter Vorsatz bejaht, hätte der Fahrer nach § 103 VVG bzw. A.1.5.1 AKB keinen Versicherungsschutz.",
+      "referenz_kontext": "Das Fallbeispiel ist dem sogenannten Berliner Raserfall nachgebildet. Das Landgericht Berlin hat den Fahrer wegen Mordes verurteilt (LG Berlin, Urt. v. 27.2. 2017 — 251 Js 52-16). Dieses Urteil ist vom BGH (NJW 2018, 1621) aufgehoben worden, das LG habe nicht sorgfältig genug begründet, warum von bedingtem Vorsatz auszugehen sei. [...] Würde man davon ausgehen, dass A den Unfall und den Tod des Unfallgegners billigend in Kauf genommen hat, so hätte er wegen § 103 VVG (entspricht A.1.5.1 AKB) keinen Versicherungsschutz.",
+      "quelle_dokument": "Skript_KFZ_2023.pdf",
+      "quelle_abschnitt": "Fallbeispiel Berliner Raser, S. 40",
+      "fragetyp": "case_law",
+      "schwierigkeit": "hard",
+      "thema": "risikoausschlüsse"
+    },
+    {
+      "id": "Q020",
+      "frage": "Unter welchen Voraussetzungen darf ein Fahrzeug nach A.1.5.2 AKB bzw. D.1.2.2 AKB trotz Motorsportaktivität versichert sein?",
+      "referenz_antwort": "Das Fahrzeug darf bei einer Motorsportveranstaltung oder -aktivität nur eingesetzt werden, wenn das Fahrzeug in einem dafür abgegrenzten Gebiet mit Zugangsbeschränkungen gebraucht wird UND für diesen Gebrauch eine Motorsporthaftpflichtversicherung nach § 5d PflVG besteht. Ohne diese Voraussetzungen greift der Risikoausschluss.",
+      "referenz_kontext": "Kein Versicherungsschutz besteht für Schäden aus dem Gebrauch des Fahrzeugs bei einer Motorsportveranstaltung oder Motorsportaktivität, einschließlich Rennen, Wettbewerben, Trainings, Tests und Demonstrationen, wenn [...] das Fahrzeug in einem hierfür abgegrenzten Gebiet mit Zugangsbeschränkungen gebraucht wird und für diesen Gebrauch des Fahrzeugs eine Motorsporthaftpflichtversicherung nach Maßgabe des § 5d des Pflichtversicherungsgesetzes besteht.",
+      "quelle_dokument": "AKB-2025.pdf",
+      "quelle_abschnitt": "A.1.5.2, S. 7-8",
+      "fragetyp": "factual",
+      "schwierigkeit": "medium",
+      "thema": "risikoausschlüsse"
+    },
+
+    {
+      "id": "Q021",
+      "frage": "Welche Rechtsgüter schützt § 7 Abs. 1 StVG und welche Haftung wird dort normiert?",
+      "referenz_antwort": "§ 7 Abs. 1 StVG normiert eine Gefährdungshaftung des Halters für Schäden an den dort genannten Rechtsgütern (Leben, Körper, Gesundheit, Sachen), die „bei dem Betrieb eines Kraftfahrzeugs“ entstehen. Die Haftung scheidet nur bei höherer Gewalt nach § 7 Abs. 2 StVG aus — der Geschädigte kann daher Ansprüche grundsätzlich immer geltend machen, wenn das Fahrzeug des Schädigers „im Betrieb“ war.",
+      "referenz_kontext": "Besondere Bedeutung als Anspruchsgrundlage des Geschädigten kommt § 7 StVG zu. Da die dort normierte Gefährdungshaftung nur bei Vorliegen höherer Gewalt ausscheidet (§ 7 Abs. 2 StVG), kann der Geschädigte seine Ansprüche immer dann geltend machen, wenn das Fahrzeug des Schädigers im Betrieb gewesen ist. [...] Voraussetzung des § 7 Abs. 1 StVG ist, dass eines der dort genannten Rechtsgüter „bei dem Betrieb eines Kraftfahrzeugs“ verletzt worden",
+      "quelle_dokument": "Skript_KFZ_2023.pdf",
+      "quelle_abschnitt": "Abschnitt 1.3, S. 7",
+      "fragetyp": "factual",
+      "schwierigkeit": "easy",
+      "thema": "betrieb_gebrauch_stVG"
+    },
+    {
+      "id": "Q022",
+      "frage": "Welche Fahrzeuge schließt § 8 Nr. 1 StVG von der Haftung nach § 7 StVG aus?",
+      "referenz_antwort": "§ 8 Nr. 1 StVG schließt die Haftung nach § 7 StVG für Fahrzeuge aus, die bauartbedingt keine höhere Geschwindigkeit als 20 km/h erreichen können. Damit entfällt die Gefährdungshaftung für langsame Kraftfahrzeuge wie bestimmte Arbeitsmaschinen.",
+      "referenz_kontext": "der Beklagten auch an der Ausnahmebestimmung des § 8 Nr. 1 StVG. Es sei nämlich davon auszugehen, dass das Fahrzeug bauartbedingt keine höhere Geschwindigkeit als 20 km/h habe erreichen können.",
+      "quelle_dokument": "Vorlesung_KFZ_Heetkamp.pdf",
+      "quelle_abschnitt": "S. 136",
+      "fragetyp": "factual",
+      "schwierigkeit": "easy",
+      "thema": "betrieb_gebrauch_stVG"
+    },
+    {
+      "id": "Q023",
+      "frage": "Wie hat der BGH im Fall „brennendes Kfz“ (VI ZR 253/13) das Merkmal „bei dem Betrieb“ ausgelegt?",
+      "referenz_antwort": "Im Fall BGH VI ZR 253/13 (= NJW 2014, 1182) hat der BGH entschieden, dass ein durch technischen Defekt eines Kfz ausgelöster Brand, der auf ein benachbartes Fahrzeug übergreift, „bei dem Betrieb“ im Sinne von § 7 Abs. 1 StVG erfolgt. Dies führt zur Haftung des Halters auch bei Bränden durch technische Defekte — die untergerichtliche Rechtsprechung hat dies vorher überwiegend anders beurteilt.",
+      "referenz_kontext": "und so das benachbarte Auto ebenfalls Feuer fängt (BGH VI ZR 253/13, sogleich). Beachten Sie: Dieses Urteil führt dazu, dass jedenfalls dann, wenn der Brand durch einen technischen Defekt eines Kfz eingetreten ist, der BGH nun von Betrieb ausgeht. Dies ist von der untergerichtlichen Rechtsprechung bislang regelmäßig anders gesehen worden. [...] BGH VI ZR 253/13 = NJW 2014, 1182",
+      "quelle_dokument": "Vorlesung_KFZ_Heetkamp.pdf",
+      "quelle_abschnitt": "Fall: Das brennende Kfz, S. 96-97",
+      "fragetyp": "case_law",
+      "schwierigkeit": "hard",
+      "thema": "betrieb_gebrauch_stVG"
+    },
+    {
+      "id": "Q024",
+      "frage": "Wann entfällt nach der BGH-Rechtsprechung die Haftung nach § 7 Abs. 1 StVG hinsichtlich des Merkmals „bei dem Betrieb“?",
+      "referenz_antwort": "Die Haftung nach § 7 Abs. 1 StVG entfällt nur dann, wenn die Fortbewegungs- und Transportfunktion des Fahrzeugs überhaupt keine Rolle mehr spielt (BGH, Urt. v. 05.07.1988 — VI ZR 346/87). Auch das Abstellen an einer Stelle beendet den Betrieb nicht (BGH, Urt. v. 25.10.1994 — VI ZR 107/94). Bei vorsätzlich angezündeten Fahrzeugen verneint der BGH den „Betrieb“ mangels Zurechnungszusammenhang.",
+      "referenz_kontext": "stellen beendet nicht den Betrieb des Fahrzeuges (BGH, Urt. v. 25.10.1994 — VI ZR 107/94). Die Haftung nach § 7 Abs. 1 StVG entfällt nur dann, wenn die Fortbewegungs- und Transportfunktion überhaupt keine Rolle mehr spielt (BGH, Urt. v. 05.07.1988 — VI ZR 346/87). Betrieb wird vom BGH (VersR 2008, 656) für den Fall des vorsätzlich angezündeten Fahrzeugs verneint.",
+      "quelle_dokument": "Skript_KFZ_2023.pdf",
+      "quelle_abschnitt": "Abschnitt Betrieb-Einzelfälle, S. 24",
+      "fragetyp": "case_law",
+      "schwierigkeit": "medium",
+      "thema": "betrieb_gebrauch_stVG"
+    },
+    {
+      "id": "Q025",
+      "frage": "In welchem Verhältnis stehen die Begriffe „Betrieb“ im Sinne des § 7 StVG und „Gebrauch“ im Sinne des A.1.1 AKB für die Deckungspflicht der Kfz-Haftpflichtversicherung?",
+      "referenz_antwort": "Ist „Betrieb“ im Sinne des § 7 StVG bejaht, steht deckungsrechtlich zugleich fest, dass sich das Kfz im „Gebrauch“ befunden hat. Daraus folgt die Eintrittspflicht des Kfz-Haftpflichtversicherers. In Fallprüfungen ist es daher sinnvoll, zuerst den Betrieb festzustellen.",
+      "referenz_kontext": "Wird Betrieb i.S. des § 7 StVG bejaht, steht damit zugleich fest, dass sich das Kfz deckungsrechtlich in Gebrauch befunden hat (Stiefel/ Maier, AKB Kommentar, A.1.1. AKB Rn. 22), so dass eine Eintrittspflicht der Kfz-Haftpflichtversicherung feststeht.",
+      "quelle_dokument": "Skript_KFZ_2023.pdf",
+      "quelle_abschnitt": "Abschnitt 1.3, S. 7",
+      "fragetyp": "conceptual",
+      "schwierigkeit": "medium",
+      "thema": "betrieb_gebrauch_stVG"
+    },
+
+    {
+      "id": "Q026",
+      "frage": "Unter welchen Voraussetzungen entfällt der vorläufige Versicherungsschutz nach B.2.4 AKB rückwirkend?",
+      "referenz_antwort": "Der vorläufige Versicherungsschutz entfällt nach B.2.4 AKB rückwirkend, wenn der Versicherer den Antrag unverändert angenommen hat UND der VN den ersten oder einmaligen Beitrag nicht unverzüglich (spätestens innerhalb von 14 Tagen nach Ablauf von zwei Wochen nach Zugang des Versicherungsscheins) bezahlt hat. Voraussetzung ist, dass der VN die verspätete Zahlung zu vertreten hat.",
+      "referenz_kontext": "B.2.4 Der vorläufige Versicherungsschutz entfällt rückwirkend, wenn wir Ihren Antrag unverändert angenommen haben und Sie den ersten oder einmaligen Beitrag nicht unverzüglich (d. h. spätestens innerhalb von 14 Tagen) nach Ablauf von zwei Wochen nach Zugang des Versicherungsscheins bezahlt haben. Sie haben dann von Anfang an keinen Versicherungsschutz. Dies gilt nur, wenn Sie die nicht rechtzeitige Zahlung zu vertreten haben.",
+      "quelle_dokument": "AKB-2025.pdf",
+      "quelle_abschnitt": "B.2.4, S. 27",
+      "fragetyp": "factual",
+      "schwierigkeit": "medium",
+      "thema": "vorläufige_deckung"
+    },
+    {
+      "id": "Q027",
+      "frage": "Welche Rolle spielt § 9 KfzPflVV für den rückwirkenden Wegfall der vorläufigen Deckung?",
+      "referenz_antwort": "§ 9 KfzPflVV regelt die Belehrungspflicht des Versicherers über den rückwirkenden Wegfall der vorläufigen Deckung. Der selbständige Vertrag über die vorläufige Deckung entfällt nur dann, wenn der VN über den rückwirkenden Wegfall ausreichend belehrt wurde. Ohne wirksame Belehrung bleibt die vorläufige Deckung bestehen, auch wenn der Hauptvertrag gekündigt wird.",
+      "referenz_kontext": "wäre stattdessen zu prüfen gewesen, ob gem. § 9 KfzPflVV über den rückwirkenden Wegfall der vorläufigen Deckung ausreichend belehrt worden ist. Denn sogar, wenn der VN über § 37 VVG richtig belehrt worden wäre und der Versicherer den Hauptvertrag gekündigt hätte, wäre damit der selbständige Vertrag über die vorläufige Deckung noch nicht in Fortfall gekommen. Denn das ist nur dann der Fall, wenn über den rückwirkenden Wegfall der vorläufigen Deckung belehrt wird.",
+      "quelle_dokument": "Skript_KFZ_2023.pdf",
+      "quelle_abschnitt": "Abschnitt 4.2.3, S. 63",
+      "fragetyp": "conceptual",
+      "schwierigkeit": "medium",
+      "thema": "vorläufige_deckung"
+    },
+    {
+      "id": "Q028",
+      "frage": "Ein VN verursacht bei vorläufiger Deckung einen Schaden von 85.000 Euro, ohne die Prämie gezahlt zu haben. Wie ist der Regressanspruch des Versicherers gegen den VN bei rückwirkendem Wegfall zu beurteilen?",
+      "referenz_antwort": "Der Versicherer kann im Innenverhältnis den gesamten geleisteten Betrag von 85.000 Euro vom VN nach § 116 Abs. 1 VVG und B.2.4 AKB zurückverlangen. Eine Limitierung des Regresses (wie bei Obliegenheitsverletzungen auf 5.000 Euro) ist beim rückwirkenden Wegfall der vorläufigen Deckung gerade nicht vorgeschrieben — die Folgen der Nichteinhaltung der Zahlungsfrist sind also besonders schwerwiegend.",
+      "referenz_kontext": "kann der VR im Innenverhältnis den geleisteten Betrag vom VN gem. § 116 Abs. 1 und B.2.4 AKB in voller Höhe zurückverlangen. Eine Limitierung des Regresses ist - anders als bei Obliegenheitsverletzungen - nicht vorgeschrieben. An diesem Beispiel lässt sich gut erkennen, welche schwerwiegende Folgen an die Nichteinhaltung der in B.2.4. AKB genannten Zahlungsfrist geknüpft sind.",
+      "quelle_dokument": "Skript_KFZ_2023.pdf",
+      "quelle_abschnitt": "Abschnitt 5 Fallbeispiel vorläufige Deckung, S. 56",
+      "fragetyp": "application",
+      "schwierigkeit": "hard",
+      "thema": "vorläufige_deckung"
+    },
+    {
+      "id": "Q029",
+      "frage": "Wann ist der erste Beitrag nach B.2.4 AKB und § 33 VVG bei vorläufiger Deckung fällig?",
+      "referenz_antwort": "Nach § 33 VVG hat der VN den ersten Beitrag unverzüglich nach Ablauf von zwei Wochen nach Zugang des Versicherungsscheins zu zahlen. In B.2.4 AKB wird „unverzüglich“ mit 14 Tagen konkretisiert. Die Gesamtfrist beträgt somit effektiv bis zu vier Wochen ab Zugang des Versicherungsscheins.",
+      "referenz_kontext": "Rückwirkender Wegfall des vorläufigen Versicherungsschutzes: Der vorläufige Versicherungsschutz entfällt rückwirkend, falls der VN die geschuldete Prämie nicht rechtzeitig bezahlt hat (§ 52 Abs. 1 VVG und B.2.4 AKB). Nach § 33 VVG hat der VN die erste Prämie „unverzüglich nach Ablauf von zwei Wochen\" zu bezahlen. In B.2.4 AKB wird unverzüglich mit 14 Tagen",
+      "quelle_dokument": "Skript_KFZ_2023.pdf",
+      "quelle_abschnitt": "Abschnitt 4.2.3, S. 58",
+      "fragetyp": "factual",
+      "schwierigkeit": "medium",
+      "thema": "vorläufige_deckung"
+    },
+
+    {
+      "id": "Q030",
+      "frage": "Welche Funktion hat § 17 Abs. 2 StVG beim Haftungsausgleich zwischen mehreren Kfz-Haltern?",
+      "referenz_antwort": "§ 17 Abs. 2 StVG regelt den Unabwendbarkeitsbeweis: Gelingt es einer Partei, ein „unabwendbares Ereignis“ nachzuweisen, entfällt deren Haftungsanteil. Misslingt der Beweis, werden die Mitverursachungsanteile im Rahmen der Abwägung nach § 17 StVG bemessen — häufig zu gleichen Anteilen, wenn beide Seiten den Beweis nicht führen können.",
+      "referenz_kontext": "war aber auch im Rahmen einer Klage der Gegenseite der Unabwendbarkeitsbeweis des § 17 Abs. 2 StVG nicht gelungen, so dass das Gericht die Mitverursachungsanteile im Rahmen einer Abwägung nach § 17 StVG gleich hoch bewertet hätte. [...] Dazu müsste sich der VN wie ein idealer Fahrer verhalten haben - nur dann hat sich der Zweck der Trunkenheitsklausel, der erhöhten Unfallgefahr durch betrunkene Fahrer zu begegnen, nicht realisiert.",
+      "quelle_dokument": "Skript_KFZ_2023.pdf",
+      "quelle_abschnitt": "Abschnitt 1.1, S. 6 / S. 82",
+      "fragetyp": "conceptual",
+      "schwierigkeit": "medium",
+      "thema": "haftungsverteilung_mitverschulden"
+    },
+    {
+      "id": "Q031",
+      "frage": "Nach welchen Normen richtet sich die Haftung des Fahrers (nicht Halters) und worin unterscheidet sie sich von der Halterhaftung?",
+      "referenz_antwort": "Die Fahrerhaftung richtet sich nach § 18 Abs. 1 StVG (spezielle Fahrerhaftung) und § 823 Abs. 1 BGB (deliktische Haftung). Anders als die verschuldensunabhängige Halter-Gefährdungshaftung nach § 7 StVG setzt die Fahrerhaftung ein Verschulden voraus und entfällt bei fehlendem Verschulden.",
+      "referenz_kontext": "Schadensersatzpflicht der H gem. § 18 Abs. 1 StVG bzw. § 823 Abs. 1 BGB — (-) mangels Verschulden",
+      "quelle_dokument": "Vorlesung_KFZ_Heetkamp.pdf",
+      "quelle_abschnitt": "Gutachten-Aufbau, S. 204",
+      "fragetyp": "factual",
+      "schwierigkeit": "medium",
+      "thema": "haftungsverteilung_mitverschulden"
+    },
+    {
+      "id": "Q032",
+      "frage": "Wie wird ein Mitverschulden des Geschädigten im Rahmen der Kfz-Haftung rechnerisch berücksichtigt?",
+      "referenz_antwort": "Das Mitverschulden wird über § 9 StVG in Verbindung mit § 254 BGB berücksichtigt. Zusätzlich ist eine mitwirkende Betriebsgefahr nach § 17 Abs. 2 StVG zu berücksichtigen. Die jeweiligen Verursachungs- und Verschuldensbeiträge werden abgewogen und als Quote im Schadensersatzanspruch abgebildet.",
+      "referenz_kontext": "[Mitverschulden, § 9 StVG, § 254 BGB; mitwirkende Betriebsgefahr, § 17 Abs. 2 StVG]",
+      "quelle_dokument": "Vorlesung_KFZ_Heetkamp.pdf",
+      "quelle_abschnitt": "Gutachten-Aufbau, S. 204",
+      "fragetyp": "factual",
+      "schwierigkeit": "medium",
+      "thema": "haftungsverteilung_mitverschulden"
+    },
+    {
+      "id": "Q033",
+      "frage": "Wann muss sich der VN auf einen Unabwendbarkeitsbeweis nach § 17 Abs. 2 StVG stützen und welche Anforderungen stellt die Rechtsprechung an den „idealen Fahrer“?",
+      "referenz_antwort": "Der VN muss sich auf den Unabwendbarkeitsbeweis des § 17 Abs. 2 StVG stützen, um trotz Trunkenheitsklausel oder ähnlicher Obliegenheitsverletzungen Leistung zu erhalten. Er müsste sich dazu wie ein idealer Fahrer verhalten haben — erst dann hat sich der Schutzzweck der Klausel (etwa Unfallgefahr durch Alkohol) nicht realisiert. Beispielhaft: Ein Stein fliegt vom vorausfahrenden Fahrzeug — dies wäre auch einem nüchternen idealen Fahrer unvermeidbar.",
+      "referenz_kontext": "dass das Verhalten des versicherten - Fahrer ein unabwendbares Ereignis i.S.d. § 17 Abs. 2 StVG darstellt. Dazu müsste sich der VN wie ein idealer Fahrer verhalten haben - nur dann hat sich der Zweck der Trunkenheitsklausel, der erhöhten Unfallgefahr durch betrunkene Fahrer zu begegnen, nicht realisiert. Ein solcher Fall läge z.B. vor, wenn auf der Autobahn vom vorausfahrenden Fahrzeug ein Stein gegen das Fahrzeug des betrunkenen VN geschleudert wird.",
+      "quelle_dokument": "Skript_KFZ_2023.pdf",
+      "quelle_abschnitt": "Abschnitt 5.3, S. 82",
+      "fragetyp": "application",
+      "schwierigkeit": "hard",
+      "thema": "haftungsverteilung_mitverschulden"
+    },
+
+    {
+      "id": "Q034",
+      "frage": "Welche Regulierungsbefugnis gewährt A.1.1.4 AKB dem Versicherer im Haftpflichtverhältnis?",
+      "referenz_antwort": "Nach A.1.1.4 AKB ist der Versicherer bevollmächtigt, gegen den VN geltend gemachte Schadenersatzansprüche in dessen Namen zu erfüllen oder abzuwehren und alle zweckmäßig erscheinenden Erklärungen im Rahmen pflichtgemäßen Ermessens abzugeben. Dies ist die sogenannte Regulierungsvollmacht.",
+      "referenz_kontext": "Regulierungsvollmacht A.1.1.4 Wir sind bevollmächtigt, gegen Sie geltend gemachte Schadenersatzansprüche in Ihrem Namen zu erfüllen oder abzuwehren und alle dafür zweckmäßig erscheinenden Erklärungen im Rahmen pflichtgemäßen Ermessens abzugeben.",
+      "quelle_dokument": "AKB-2025.pdf",
+      "quelle_abschnitt": "A.1.1.4, S. 6",
+      "fragetyp": "factual",
+      "schwierigkeit": "easy",
+      "thema": "regulierungsermessen"
+    },
+    {
+      "id": "Q035",
+      "frage": "Wann wird ein fehlerhaftes Regulierungsermessen des Versicherers zu einem Schadensersatzanspruch des VN führen?",
+      "referenz_antwort": "Fehlerhaftes Regulierungsermessen wird selten bejaht. Das OLG Köln (r+s 92, 261) bejahte es in einem Fall, in dem der Versicherer trotz fehlgeschlagenem Unabwendbarkeitsbeweis der Gegenseite einen hälftigen Schaden nicht hätte regulieren dürfen. Entscheidend ist, ob der Versicherer bei pflichtgemäßer Prüfung erkennen konnte, dass die Regulierung nicht der Rechtslage entspricht.",
+      "referenz_kontext": "Fehlerhaft ausgeübtes Regulierungsermessen wird selten bejaht, das OLG Köln (r+s 92, 261) ist hiervon in einem Fall ausgegangen, in dem",
+      "quelle_dokument": "Skript_KFZ_2023.pdf",
+      "quelle_abschnitt": "Abschnitt 1.1, S. 6",
+      "fragetyp": "case_law",
+      "schwierigkeit": "hard",
+      "thema": "regulierungsermessen"
+    },
+    {
+      "id": "Q036",
+      "frage": "Hat der VN einen Schadensersatzanspruch wegen der Rückstufung im Schadenfreiheitsrabatt, wenn der Versicherer ordnungsgemäß reguliert hat?",
+      "referenz_antwort": "Nein. Reguliert der Versicherer im Rahmen seines pflichtgemäßen Ermessens (A.1.1.4 AKB) und entspricht die Regulierung der Rechtslage — etwa bei hälftiger Schadenteilung nach § 17 StVG bei beidseits misslungenem Unabwendbarkeitsbeweis — so hat der VN keine Ansprüche auf Schadenersatz gegen den Kfz-Haftpflichtversicherer, auch wenn sich dadurch eine Rückstufung ergibt.",
+      "referenz_kontext": "Der Ausgleich des hälftigen Schadens der Gegenseite war daher nicht pflichtwidrig, sondern entsprach der Rechtslage. Ergebnis: Dem VN stehen keine Ansprüche auf Schadenersatz gegen den KH-Versicherer zu.",
+      "quelle_dokument": "Skript_KFZ_2023.pdf",
+      "quelle_abschnitt": "Abschnitt Regulierungsermessen, S. 6",
+      "fragetyp": "application",
+      "schwierigkeit": "medium",
+      "thema": "regulierungsermessen"
+    },
+
+    {
+      "id": "Q037",
+      "frage": "Was regelt § 1 PflVG in Verbindung mit § 2 KfzPflVV bezüglich der Pflicht zum Abschluss einer Kfz-Haftpflichtversicherung?",
+      "referenz_antwort": "§ 1 PflVG und § 2 KfzPflVV verpflichten den Halter eines Kfz, für sich selbst, den Eigentümer und den Fahrer eine Haftpflichtversicherung abzuschließen. Diese muss Personenschäden, Sachschäden und sonstige Vermögensschäden decken, die durch den Gebrauch des Fahrzeugs verursacht werden. A.1.1 AKB setzt diese Vorgaben in den Versicherungsbedingungen um.",
+      "referenz_kontext": "ist durch § 1 PflVG und § 2 KfzPflVV gesetzlich festgelegt. Danach ist der Halter eines Kfz verpflichtet, für sich, den Eigentümer und den Fahrer eine Haftpflichtversicherung zur Deckung der durch den Gebrauch des Fahrzeugs verursachten Personenschäden, Sachschäden und sonstigen Vermögensschäden abzuschließen. Diese Vorgaben finden sich in A.1.1 AKB umgesetzt",
+      "quelle_dokument": "Skript_KFZ_2023.pdf",
+      "quelle_abschnitt": "Abschnitt 1.1, S. 4",
+      "fragetyp": "factual",
+      "schwierigkeit": "easy",
+      "thema": "pflVG_schutzzweck"
+    },
+    {
+      "id": "Q038",
+      "frage": "Wann greift die Verkehrsopferhilfe nach § 12 PflVG ein und welche Funktion erfüllt sie?",
+      "referenz_antwort": "Die Verkehrsopferhilfe nach § 12 PflVG ist ein Entschädigungsfonds mit subsidiärer Haftung. Sie tritt ein, wenn ein Unfallopfer keinen Ersatz von einem eintrittspflichtigen Kfz-Haftpflichtversicherer erhalten kann — etwa bei unbekannt gebliebenen Fahrzeugen oder fehlendem Versicherungsvertrag. Zusätzlich sind §§ 17-22 PflVG n.F. für die Insolvenz eines Kfz-Haftpflichtversicherers relevant.",
+      "referenz_kontext": "Verkehrsopferhilfe (§ 12 PflVG, sog. Entschädigungsfonds mit subsidiärer Haftung) — Insolvenzfonds, §§ 17-22 PflVG n.F. für Insolvenz eines Kfz-Haftpflichtversicherers",
+      "quelle_dokument": "Vorlesung_KFZ_Heetkamp.pdf",
+      "quelle_abschnitt": "S. 34",
+      "fragetyp": "factual",
+      "schwierigkeit": "easy",
+      "thema": "pflVG_schutzzweck"
+    },
+    {
+      "id": "Q039",
+      "frage": "Wie ist der Aufbau eines Gutachtens bei einem Kfz-Haftpflichtfall hinsichtlich der Schadensersatzpflicht des Versicherers gegen Dritte systematisch gegliedert?",
+      "referenz_antwort": "Nach dem empfohlenen Aufbau: (I) Haftpflicht des Halters aus § 7 Abs. 1 StVG; (II) Haftpflicht des Fahrers aus § 18 Abs. 1 StVG bzw. § 823 Abs. 1 BGB; (III) Schadensersatzpflicht des Versicherers nach § 115 Abs. 1 S. 1 Nr. 1 VVG in Verbindung mit § 1 S. 1 PflVG; (IV) Gesamtschuld nach § 115 Abs. 1 S. 4 VVG.",
+      "referenz_kontext": "II. Schadensersatzpflicht der H gem. § 18 Abs. 1 StVG bzw. § 823 Abs. 1 BGB — (-) mangels Verschulden. III. Schadensersatzpflicht der V gem. § 115 Abs. 1 S. 1 Nr. 1 VVG iVm § 1 S. 1 PflVG — 1. Haftpflicht der H wegen Sachschadens besteht (s.o.) — 2. Gebrauch des Kfz. IV. Gesamtschuld gem. § 115 Abs. 1 S. 4",
+      "quelle_dokument": "Vorlesung_KFZ_Heetkamp.pdf",
+      "quelle_abschnitt": "Gutachten-Aufbau, S. 204",
+      "fragetyp": "application",
+      "schwierigkeit": "medium",
+      "thema": "pflVG_schutzzweck"
+    },
+    {
+      "id": "Q040",
+      "frage": "Welcher Schutzzweck liegt der Pflichtversicherung nach § 1 PflVG zugrunde?",
+      "referenz_antwort": "Der Schutzzweck des PflVG liegt darin, den durch Kfz-Gebrauch Geschädigten einen solventen Schuldner zur Verfügung zu stellen. § 1 PflVG sorgt zusammen mit den §§ 115-117 VVG dafür, dass Unfallopfer unabhängig von der Liquidität des Schädigers Ersatz erhalten können — entweder über den Direktanspruch gegen den Versicherer oder subsidiär über die Verkehrsopferhilfe nach § 12 PflVG.",
+      "referenz_kontext": "Danach ist der Halter eines Kfz verpflichtet, für sich, den Eigentümer und den Fahrer eine Haftpflichtversicherung zur Deckung der durch den Gebrauch des Fahrzeugs verursachten Personenschäden, Sachschäden und sonstigen Vermögensschäden abzuschließen. [...] bzw. kann sich das Opfer an die Verkehrsopferhilfe wenden (§ 12 PflVG).",
+      "quelle_dokument": "Skript_KFZ_2023.pdf",
+      "quelle_abschnitt": "Abschnitt 1.1 / 5, S. 4 / S. 69",
+      "fragetyp": "conceptual",
+      "schwierigkeit": "medium",
+      "thema": "pflVG_schutzzweck"
+    }
+  ]
+}
