@@ -71,6 +71,7 @@ OPENAI_EMBED_KEY = "openai_embedding_key"
 # nicht zuverlaessig schreiben kann
 # key ist session_id pro user
 _prefetch_results: dict[int, tuple] = {}
+_prefetch_in_flight: set[int] = set()
 _prefetch_lock = threading.Lock()
 
 
@@ -84,6 +85,12 @@ def _prefetch_next_quiz(session_id: int, topic: str | None) -> None:
     if ctx is None:
         return
 
+    with _prefetch_lock:
+        if session_id in _prefetch_in_flight:
+            # schon ein thread aktiv keinen zweiten starten
+            return
+        _prefetch_in_flight.add(session_id)
+
     def worker():
         try:
             add_script_run_ctx(threading.current_thread(), ctx)
@@ -95,6 +102,9 @@ def _prefetch_next_quiz(session_id: int, topic: str | None) -> None:
                 _prefetch_results[session_id] = (data, error, topic)
         except Exception:
             pass
+        finally:
+            with _prefetch_lock:
+                _prefetch_in_flight.discard(session_id)
 
     t = threading.Thread(target=worker, daemon=True)
     t.start()
@@ -129,17 +139,22 @@ def _warmup_reranker_async() -> None:
 
 def _pop_prefetched_quiz(session_id: int, topic: str | None, *, wait_ms: int = 0):
     """liefert das prefetched ergebnis falls fuer session und topic vorhanden
-    wartet bis zu wait_ms millisekunden falls der background-thread noch laeuft
+    wartet nur solange ein thread tatsaechlich aktiv laeuft
+    bei crash oder ohne thread sofort None
     """
     deadline = time.time() + wait_ms / 1000
     while True:
         with _prefetch_lock:
             entry = _prefetch_results.pop(session_id, None)
+            in_flight = session_id in _prefetch_in_flight
         if entry is not None:
             data, error, prefetch_topic = entry
             if prefetch_topic != topic:
                 return None
             return data, error
+        if not in_flight:
+            # kein thread aktiv warten waere sinnlos
+            return None
         if time.time() >= deadline:
             return None
         time.sleep(0.05)
@@ -1041,16 +1056,38 @@ st.markdown("""
     }
 
     /* ── Sidebar-Expander: kompakte Buttons (Schriftgröße passend) ── */
-    section[data-testid="stSidebar"] [data-testid="stExpander"] .stButton > button {
-        font-size: 0.85rem !important;
-        padding: 0.45rem 0.75rem !important;
+    section[data-testid="stSidebar"] [data-testid="stExpander"] .stButton > button,
+    section[data-testid="stSidebar"] [data-testid="stExpander"] [data-testid="stColumn"] button {
+        font-size: 0.82rem !important;
+        font-weight: 500 !important;
+        padding: 0.4rem 0.6rem !important;
         min-height: 0 !important;
+        height: auto !important;
         line-height: 1.3 !important;
         white-space: nowrap !important;
+        text-align: left !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
     }
-    section[data-testid="stSidebar"] [data-testid="stExpander"] .stButton > button p {
-        font-size: 0.85rem !important;
+    section[data-testid="stSidebar"] [data-testid="stExpander"] .stButton > button p,
+    section[data-testid="stSidebar"] [data-testid="stExpander"] .stButton > button div,
+    section[data-testid="stSidebar"] [data-testid="stExpander"] [data-testid="stColumn"] button p,
+    section[data-testid="stSidebar"] [data-testid="stExpander"] [data-testid="stColumn"] button div {
+        font-size: 0.82rem !important;
+        font-weight: 500 !important;
         margin: 0 !important;
+        line-height: 1.3 !important;
+        text-align: left !important;
+    }
+    /* X-Buttons im chat-liste-expander zentriert und kleiner */
+    section[data-testid="stSidebar"] [data-testid="stExpander"] [data-testid="stColumn"]:last-child button {
+        text-align: center !important;
+        padding: 0.4rem 0.3rem !important;
+        color: #94a3b8 !important;
+    }
+    section[data-testid="stSidebar"] [data-testid="stExpander"] [data-testid="stColumn"]:last-child button:hover {
+        color: #f87171 !important;
+        border-color: rgba(239, 68, 68, 0.5) !important;
     }
 
     /* ── Source chunk in expander ── */
@@ -1821,14 +1858,13 @@ elif st.session_state.mode == "Quiz":
             st.session_state.last_quiz_topic = quiz_topic
 
         # check ob im hintergrund schon eine frage vorgeneriert wurde
-        # bis zu 4 sekunden warten falls der thread noch laeuft
-        # passt das prefetched-topic nicht oder thread crashed: synchron generieren
+        # warten nur wenn ein thread tatsaechlich aktiv laeuft (sonst sinnlos)
         prefetched_data = None
         current_topic = quiz_topic if quiz_topic else None
         if st.session_state.session_id is not None:
-            with st.spinner("Naechste Frage wird geladen..."):
+            with st.spinner("Nächste Frage wird geladen…"):
                 popped = _pop_prefetched_quiz(
-                    st.session_state.session_id, current_topic, wait_ms=4000
+                    st.session_state.session_id, current_topic, wait_ms=5000
                 )
             if popped is not None:
                 data, _err = popped
