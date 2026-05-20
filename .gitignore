@@ -34,3 +34,8 @@ postgres_data/
 # nicht ueber das Repo verteilt)
 documents/*.pdf
 !documents/.gitkeep
+
+# Evaluations-Ergebnisse (werden lokal erzeugt, nicht eingecheckt)
+evaluation/results/
+evaluation/_pdf_extracted.json
+traces.db
