@@ -1,19 +1,43 @@
+from psycopg2.extras import execute_values
+
 from db.database import get_connection
 
 
-def insert_chunks(document_id: int, chunks: list[dict]):
-    """speichert abschnitte mit embeddings in der datenbank."""
+def insert_chunks(document_id: int, chunks: list[dict]) -> None:
+    """Fügt Chunks mit Embeddings in die Datenbank ein.
+
+    Verwendet `psycopg2.extras.execute_values` für einen einzigen
+    Bulk-INSERT statt einer Schleife aus Einzel-Inserts. Das spart bei
+    ~400–1000 Chunks pro Dokument eine Größenordnung an Roundtrips und
+    damit auch Wall-Clock-Zeit (Benchmark siehe
+    `docs/performance_bulk_insert.md`).
+    """
+    if not chunks:
+        return
+
+    rows = [
+        (
+            document_id,
+            chunk["chunk_index"],
+            chunk["content"],
+            chunk["page_number"],
+            "[" + ",".join(str(x) for x in chunk["embedding"]) + "]",
+        )
+        for chunk in chunks
+    ]
+
     conn = get_connection()
     try:
         cur = conn.cursor()
-        for chunk in chunks:
-            embedding_str = "[" + ",".join(str(x) for x in chunk["embedding"]) + "]"
-            cur.execute(
-                """INSERT INTO chunks (document_id, chunk_index, content, page_number, embedding)
-                   VALUES (%s, %s, %s, %s, %s::vector)""",
-                (document_id, chunk["chunk_index"], chunk["content"],
-                 chunk["page_number"], embedding_str)
-            )
+        execute_values(
+            cur,
+            """INSERT INTO chunks
+                   (document_id, chunk_index, content, page_number, embedding)
+               VALUES %s""",
+            rows,
+            template="(%s, %s, %s, %s, %s::vector)",
+            page_size=200,
+        )
         conn.commit()
         cur.close()
     finally:
@@ -21,7 +45,7 @@ def insert_chunks(document_id: int, chunks: list[dict]):
 
 
 def semantic_search(query_embedding: list[float], top_k: int = 20) -> list[dict]:
-    """sucht passende abschnitte über semantische ähnlichkeit."""
+    """Semantische Suche via Cosine Similarity."""
     conn = get_connection()
     try:
         cur = conn.cursor()
@@ -49,7 +73,7 @@ def semantic_search(query_embedding: list[float], top_k: int = 20) -> list[dict]
 
 
 def fulltext_search(query: str, top_k: int = 20) -> list[dict]:
-    """macht eine volltextsuche in postgres mit deutschem wörterbuch."""
+    """PostgreSQL Full-Text-Search mit deutschem Woerterbuch."""
     conn = get_connection()
     try:
         cur = conn.cursor()

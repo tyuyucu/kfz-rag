@@ -1,25 +1,280 @@
 import os
 import html
+from pathlib import Path
 import streamlit as st
 
-# streamlit cloud: secrets in os.environ laden, bevor andere module kommen
-try:
-    for _key, _val in st.secrets.items():
-        if isinstance(_val, str) and _key not in os.environ:
-            os.environ[_key] = _val
-except Exception:
-    pass
+# Streamlit Cloud: Secrets in os.environ laden BEVOR andere Module importiert werden.
+# Lokal gibt es keine secrets.toml -> Aufruf ueberspringen, sonst zaehlt
+# st.secrets.items() als erster Streamlit-Befehl und kollidiert mit set_page_config.
+_secrets_paths = [
+    Path.home() / ".streamlit" / "secrets.toml",
+    Path(__file__).parent / ".streamlit" / "secrets.toml",
+]
+if any(p.exists() for p in _secrets_paths):
+    try:
+        for _key, _val in st.secrets.items():
+            if isinstance(_val, str) and _key not in os.environ:
+                os.environ[_key] = _val
+    except Exception:
+        pass
 
-from db.database import init_db, get_all_documents, create_chat_session, save_chat_message
+from db.database import (
+    init_db,
+    get_all_documents,
+    create_chat_session,
+    save_chat_message,
+    get_config,
+    set_config,
+    reset_knowledge_base,
+)
 from db.vector_store import get_chunk_count
 from ingestion.pipeline import ingest_document, remove_document
+from ingestion.embedder import (
+    PROVIDER_OPENAI,
+    get_active_provider,
+    reset_provider_caches,
+    verify_openai_key,
+)
 from retrieval.pipeline import retrieve
 from generation.history import rewrite_question_with_history
-from generation.generator import generate_answer, is_greeting, generate_greeting_response, generate_sparring_response
+from generation.generator import (
+    generate_answer,
+    is_greeting,
+    generate_greeting_response,
+    generate_sparring_response,
+    generate_answer_stream,
+    generate_sparring_stream,
+)
 from generation.quiz import generate_quiz_question
+from streamlit_pdf_viewer import pdf_viewer
 from config import DOCUMENTS_DIR
 
-# bereich: konstanten
+
+# Konfig-Schlüssel für den Setup-Wizard (in `app_config`-Tabelle).
+SETUP_FLAG_KEY = "setup_completed"
+OPENAI_EMBED_KEY = "openai_embedding_key"
+
+
+@st.dialog("📖 Quelle im PDF", width="large")
+def _show_pdf_dialog(filepath: str, page: int, filename: str):
+    """Zeigt das PDF im Dialog, springt direkt auf die zitierte Seite."""
+    st.caption(f"{filename} — Seite {page}")
+    pdf_viewer(
+        input=filepath,
+        height=750,
+        scroll_to_page=page,
+        render_text=True,
+    )
+
+
+def _render_chunk_sources(context_chunks: list[dict], *, key_prefix: str) -> None:
+    """Rendert die Quellen-Liste mit vollem Chunk-Text und PDF-Sprung-Button."""
+    for i, chunk in enumerate(context_chunks, 1):
+        safe_filename = html.escape(chunk["filename"])
+        safe_content = html.escape(chunk["content"])
+        st.markdown(f"""
+        <div class="source-chunk">
+            <div class="source-header">
+                📄 {safe_filename} — Seite {chunk["page_number"]}
+                &nbsp;&middot;&nbsp; Relevanz: {chunk.get("rerank_score", 0):.3f}
+            </div>
+            <div class="source-text">{safe_content}</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+        pdf_path = os.path.join(DOCUMENTS_DIR, chunk["filename"])
+        if os.path.exists(pdf_path):
+            btn_key = f"pdf_{key_prefix}_{i}_{chunk['page_number']}"
+            if st.button(
+                f"📖 Seite {chunk['page_number']} im PDF öffnen",
+                key=btn_key,
+                use_container_width=True,
+            ):
+                _show_pdf_dialog(pdf_path, chunk["page_number"], chunk["filename"])
+
+
+# ── First-Run-Setup-Wizard ──────────────────────────────────────────────
+
+def _setup_completed() -> bool:
+    """True, wenn der Studi den Wizard durchlaufen hat. DB-getrieben,
+    damit die Wahl auch nach Browser-Reload bestehen bleibt."""
+    try:
+        return get_config(SETUP_FLAG_KEY) == "true"
+    except Exception:
+        # Fallback: wenn die DB-Verbindung am Anfang der App nicht steht,
+        # zeigen wir den Wizard nicht — der DB-Fehler wird ohnehin in der
+        # regulären Sidebar gemeldet.
+        return True
+
+
+def _wizard_step1_embedding(chunk_count_now: int) -> None:
+    """Schritt 1: OpenAI-Schlüssel für Embeddings hinterlegen."""
+    st.markdown("""
+    <div class="main-header">
+        <span class="header-icon">⚙️</span>
+        <h1>Erstkonfiguration</h1>
+        <div class="header-sub">
+            Hinterlege einmalig deinen OpenAI-Schlüssel — er wird
+            ausschließlich lokal gespeichert und für die Vektor-
+            Erzeugung deiner Lernmaterialien verwendet.
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    st.markdown("### OpenAI-API-Schlüssel")
+    st.caption(
+        "Die Suche arbeitet mit Embeddings — Vektor-Darstellungen deiner "
+        "PDFs, erzeugt durch das Modell `text-embedding-3-small`. Kosten: "
+        "ca. **0,01 €** einmalig für das Ingesten der Vorlesungs-PDFs, "
+        "danach nur Bruchteile davon pro Suchanfrage. Den Schlüssel "
+        "erstellst du auf "
+        "[platform.openai.com/api-keys](https://platform.openai.com/api-keys)."
+    )
+
+    api_key_value = st.text_input(
+        "Schlüssel",
+        type="password",
+        placeholder="sk-...",
+        key="wizard_openai_embed_key",
+        label_visibility="collapsed",
+    )
+
+    st.caption(
+        "Wird verschlüsselt-im-Volume in deiner lokalen Postgres-DB "
+        "abgelegt — verlässt deinen Rechner nie."
+    )
+
+    st.divider()
+
+    if st.button("Weiter — Schlüssel speichern", type="primary",
+                 use_container_width=True, key="wizard_step1_continue"):
+        stripped = (api_key_value or "").strip()
+        if not stripped:
+            st.warning("Bitte den OpenAI-Schlüssel eingeben.")
+            return
+        with st.spinner("Schlüssel wird verifiziert…"):
+            ok, err = verify_openai_key(stripped)
+        if not ok:
+            st.error(
+                f"Schlüssel konnte nicht bestätigt werden: {err}. "
+                "Bitte prüfen und erneut versuchen."
+            )
+            return
+        set_config(OPENAI_EMBED_KEY, stripped)
+        reset_provider_caches()
+        st.session_state.wizard_step = "upload"
+        st.rerun()
+
+
+def _wizard_step2_upload() -> None:
+    """Schritt 2: PDFs hochladen und ingesten — kann auch übersprungen
+    werden, falls der Studi später nachladen will."""
+    st.markdown("""
+    <div class="main-header">
+        <span class="header-icon">📚</span>
+        <h1>Lernmaterialien hinzufügen</h1>
+        <div class="header-sub">
+            Lade jetzt die PDFs hoch, mit denen du arbeiten möchtest —
+            oder überspringe diesen Schritt und füge sie später über die
+            Sidebar hinzu.
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    st.divider()
+
+    files = st.file_uploader(
+        "PDFs hochladen",
+        type=["pdf"],
+        accept_multiple_files=True,
+        key="wizard_pdf_uploader",
+    )
+
+    cols = st.columns([1, 1])
+    with cols[0]:
+        skip = st.button(
+            "Überspringen — später hinzufügen",
+            use_container_width=True,
+            key="wizard_skip_upload",
+        )
+    with cols[1]:
+        process = st.button(
+            "PDFs verarbeiten",
+            type="primary",
+            use_container_width=True,
+            key="wizard_process_upload",
+            disabled=not files,
+        )
+
+    if skip:
+        set_config(SETUP_FLAG_KEY, "true")
+        st.session_state.wizard_step = "done"
+        st.rerun()
+        return
+
+    if process and files:
+        os.makedirs(DOCUMENTS_DIR, exist_ok=True)
+        results: list[dict] = []
+        progress = st.progress(0.0, text="Starte Ingest…")
+        for i, uploaded in enumerate(files, 1):
+            filepath = os.path.join(DOCUMENTS_DIR, uploaded.name)
+            with open(filepath, "wb") as fh:
+                fh.write(uploaded.getbuffer())
+            progress.progress(
+                (i - 0.5) / len(files),
+                text=f"Verarbeite {uploaded.name} ({i}/{len(files)})…",
+            )
+            results.append(ingest_document(filepath, uploaded.name))
+            progress.progress(i / len(files), text=f"{i}/{len(files)} fertig")
+
+        # Zusammenfassung
+        ok = [r for r in results if r["status"] == "ingested"]
+        unchanged = [r for r in results if r["status"] == "unchanged"]
+        failed = [r for r in results if r["status"] not in ("ingested", "unchanged")]
+
+        if ok:
+            st.success(
+                f"{len(ok)} PDF(s) verarbeitet — "
+                f"{sum(r.get('chunks', 0) for r in ok)} Chunks im Index."
+            )
+        if unchanged:
+            st.info(f"{len(unchanged)} PDF(s) bereits vorhanden, übersprungen.")
+        if failed:
+            st.error(
+                "Fehler bei: "
+                + ", ".join(f"{r.get('filename', '?')}" for r in failed)
+            )
+
+        set_config(SETUP_FLAG_KEY, "true")
+        st.session_state.wizard_step = "done"
+        # Nicht sofort rerun — Studi sieht Erfolgsmeldung. „Weiter"-Button:
+        if st.button("App starten", type="primary",
+                     use_container_width=True, key="wizard_finish"):
+            st.rerun()
+
+
+def _render_setup_wizard() -> None:
+    """Komplette Wizard-UI. Verzweigt anhand `wizard_step` in Session."""
+    chunk_count_now = get_chunk_count()
+    step = st.session_state.get("wizard_step")
+    if step is None:
+        # Erstes Mal: wenn die DB schon Chunks enthält (z. B. nach
+        # früherem Setup ohne setup_completed-Flag — Migration), springen
+        # wir direkt zu Upload, sonst zu Embedding-Auswahl.
+        step = "upload" if chunk_count_now > 0 else "embedding"
+        st.session_state.wizard_step = step
+
+    if step == "embedding":
+        _wizard_step1_embedding(chunk_count_now)
+    elif step == "upload":
+        _wizard_step2_upload()
+    else:
+        # "done" — Setup-Flag müsste gesetzt sein. Sicherheitsfalle:
+        set_config(SETUP_FLAG_KEY, "true")
+        st.rerun()
+
+
+# ── Konstanten ──
 NO_ANSWER_HINTS = [
     "keine relevanten informationen",
     "nicht im kontext enthalten",
@@ -36,7 +291,7 @@ NO_ANSWER_HINTS = [
     "was möchtest du"
 ]
 
-# bereich: seiten-konfiguration
+# ── Seiten-Konfiguration ──
 st.set_page_config(
     page_title="Kfz-Haftpflicht Lern-Assistent",
     page_icon="🎓",
@@ -44,13 +299,13 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# bereich: eigenes css
+# ── Custom CSS ──
 st.markdown("""
 <style>
-    /* allgemein */
+    /* ── Allgemein ── */
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
-    /* dark-mode immer aktiv halten */
+    /* ── Dark-Mode universell erzwingen (Streamlit ignoriert Browser-Preference) ── */
     :root, [data-theme="light"], [data-theme="dark"] {
         --background-color: #0e1117 !important;
         --secondary-background-color: #1a1f2e !important;
@@ -156,7 +411,7 @@ st.markdown("""
         font-family: 'Inter', sans-serif;
     }
 
-    /* sidebar */
+    /* ── Sidebar ── */
     section[data-testid="stSidebar"] {
         background: linear-gradient(180deg, #1a1f2e 0%, #0f1320 100%);
         border-right: 1px solid rgba(99, 102, 241, 0.15);
@@ -167,8 +422,8 @@ st.markdown("""
         letter-spacing: -0.02em;
     }
 
-    /* sidebar branding-button */
-    /* branding-home-button (erstes element in der sidebar) */
+    /* ── Sidebar Branding-Button ── */
+    /* ── Branding-Home-Button (erstes Element in Sidebar) ── */
     [data-testid="stSidebarUserContent"] [data-testid="stVerticalBlock"] > [data-testid="stElementContainer"]:nth-child(1) button {
         background: transparent !important;
         border: 1px solid rgba(255,255,255,0.08) !important;
@@ -197,20 +452,20 @@ st.markdown("""
         line-height: 2.2 !important;
     }
 
-    /* modus-radio-buttons gleichmäßig verteilen */
+    /* ── Modus-Radio-Buttons gleichmäßig verteilen ── */
     section[data-testid="stSidebar"] [data-testid="stRadio"] > div[role="radiogroup"],
     section[data-testid="stSidebar"] [data-testid="stRadio"] > div {
         justify-content: space-evenly !important;
     }
 
-    /* x-button hover (löschen-akzent) */
+    /* ── X-Button Hover (Löschen-Akzent) ── */
     section[data-testid="stSidebar"] [data-testid="stColumn"] button:hover {
         color: #f87171 !important;
         border-color: rgba(239, 68, 68, 0.5) !important;
         background: rgba(239, 68, 68, 0.1) !important;
     }
 
-    /* modus-tabs */
+    /* ── Modus-Tabs ── */
     .mode-tabs {
         display: flex;
         gap: 0.5rem;
@@ -238,7 +493,7 @@ st.markdown("""
         border: 1px solid rgba(255,255,255,0.08);
     }
 
-    /* stat-karten */
+    /* ── Stat-Karten ── */
     .stat-row {
         display: flex;
         gap: 0.6rem;
@@ -265,7 +520,7 @@ st.markdown("""
         margin-top: 0.15rem;
     }
 
-    /* dokument-liste */
+    /* ── Dokument-Liste ── */
     .doc-item {
         display: flex;
         align-items: center;
@@ -298,7 +553,7 @@ st.markdown("""
         margin-top: 0.1rem;
     }
 
-    /* sidebar section header */
+    /* ── Sidebar Section Headers ── */
     .sidebar-section {
         font-size: 0.72rem;
         font-weight: 600;
@@ -310,7 +565,7 @@ st.markdown("""
         border-bottom: 1px solid rgba(255,255,255,0.06);
     }
 
-    /* hauptbereich header */
+    /* ── Hauptbereich Header ── */
     .main-header {
         text-align: center;
         padding: 1.5rem 0 1rem 0;
@@ -333,7 +588,7 @@ st.markdown("""
         margin-top: 0.3rem;
     }
 
-    /* welcome-cards */
+    /* ── Welcome Cards ── */
     .welcome-grid {
         display: grid;
         grid-template-columns: repeat(3, 1fr);
@@ -370,14 +625,14 @@ st.markdown("""
         line-height: 1.4;
     }
 
-    /* chat-messages */
+    /* ── Chat Messages ── */
     .stChatMessage {
         border-radius: 12px !important;
         border: 1px solid rgba(255,255,255,0.05) !important;
         margin-bottom: 0.8rem !important;
     }
 
-    /* chat-input */
+    /* ── Chat Input ── */
     .stChatInput {
         border-radius: 14px !important;
     }
@@ -391,7 +646,7 @@ st.markdown("""
         box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12) !important;
     }
 
-    /* quiz-karte */
+    /* ── Quiz-Karte ── */
     .quiz-question-card {
         background: rgba(255,255,255,0.03);
         border: 1px solid rgba(255,255,255,0.08);
@@ -411,7 +666,7 @@ st.markdown("""
         color: #64748b;
     }
 
-    /* quiz-score-badge */
+    /* ── Quiz Score Badge ── */
     .score-badge {
         display: inline-flex;
         align-items: center;
@@ -426,7 +681,7 @@ st.markdown("""
         margin-bottom: 1rem;
     }
 
-    /* quiz-antwortoptionen nach beantwortung */
+    /* ── Quiz Antwortoptionen nach Beantwortung ── */
     .quiz-option-answered {
         padding: 0.7rem 1rem;
         border-radius: 10px;
@@ -457,7 +712,7 @@ st.markdown("""
         color: #94a3b8;
     }
 
-    /* buttons */
+    /* ── Buttons ── */
     .stButton > button {
         border-radius: 10px !important;
         font-weight: 500 !important;
@@ -477,21 +732,21 @@ st.markdown("""
         color: #ffffff !important;
     }
 
-    /* expander */
+    /* ── Expander ── */
     .streamlit-expanderHeader {
         font-size: 0.85rem !important;
         font-weight: 500 !important;
         border-radius: 10px !important;
     }
 
-    /* file-uploader */
+    /* ── File Uploader ── */
     section[data-testid="stFileUploader"] {
         border-radius: 10px;
     }
     section[data-testid="stFileUploader"] > div {
         border-radius: 10px !important;
     }
-    /* deutsche texte für file-uploader */
+    /* Deutsche Texte für File Uploader */
     [data-testid="stFileUploaderDropzone"] span:first-of-type {
         visibility: hidden;
         position: relative;
@@ -527,29 +782,29 @@ st.markdown("""
         white-space: nowrap;
     }
 
-    /* divider */
+    /* ── Divider ── */
     hr {
         border-color: rgba(255,255,255,0.06) !important;
         margin: 0.8rem 0 !important;
     }
 
-    /* progress-bar */
+    /* ── Progress Bar ── */
     .stProgress > div > div {
         background: linear-gradient(90deg, #6366f1, #8b5cf6) !important;
         border-radius: 6px !important;
     }
 
-    /* metric-default ausblenden */
+    /* ── Metric hiding default ── */
     [data-testid="stMetric"] {
         display: none;
     }
 
-    /* alert-boxen */
+    /* ── Alert boxes ── */
     .stAlert {
         border-radius: 10px !important;
     }
 
-    /* text-input-tooltip ausblenden */
+    /* ── Text Input Tooltip (Press Enter to apply) verstecken ── */
     .stTextInput div[data-baseweb="tooltip"] {
         display: none !important;
     }
@@ -557,7 +812,7 @@ st.markdown("""
         display: none !important;
     }
 
-    /* mode-badge */
+    /* ── Mode Badge ── */
     .mode-badge {
         display: inline-flex;
         align-items: center;
@@ -585,7 +840,7 @@ st.markdown("""
         color: #6ee7b7;
     }
 
-    /* auto-anchor-links in chat-headings aus */
+    /* ── Disable auto-anchor links on headings in chat ── */
     [data-testid="stChatMessage"] h1 a,
     [data-testid="stChatMessage"] h2 a,
     [data-testid="stChatMessage"] h3 a,
@@ -594,7 +849,7 @@ st.markdown("""
         pointer-events: none !important;
     }
 
-    /* overflow-fix für expander */
+    /* ── Expander overflow fix ── */
     [data-testid="stExpander"] hr {
         display: none !important;
     }
@@ -602,7 +857,20 @@ st.markdown("""
         overflow: hidden !important;
     }
 
-    /* quellen-abschnitt im expander */
+    /* ── Sidebar-Expander: kompakte Buttons (Schriftgröße passend) ── */
+    section[data-testid="stSidebar"] [data-testid="stExpander"] .stButton > button {
+        font-size: 0.85rem !important;
+        padding: 0.45rem 0.75rem !important;
+        min-height: 0 !important;
+        line-height: 1.3 !important;
+        white-space: nowrap !important;
+    }
+    section[data-testid="stSidebar"] [data-testid="stExpander"] .stButton > button p {
+        font-size: 0.85rem !important;
+        margin: 0 !important;
+    }
+
+    /* ── Source chunk in expander ── */
     .source-chunk {
         background: rgba(255,255,255,0.03);
         border: 1px solid rgba(255,255,255,0.06);
@@ -621,11 +889,13 @@ st.markdown("""
         color: #94a3b8;
         font-size: 0.78rem;
         line-height: 1.45;
+        white-space: pre-wrap;
+        word-wrap: break-word;
     }
 </style>
 """, unsafe_allow_html=True)
 
-# bereich: zugangskontrolle
+# ── Zugangskontrolle ──
 if "authenticated" not in st.session_state:
     st.session_state.authenticated = False
 
@@ -649,15 +919,31 @@ if not st.session_state.authenticated:
                 st.error("Falsches Passwort")
     st.stop()
 
-# bereich: prototyp-hinweis
-st.info(
-    "**Prototyp** — Diese Anwendung wurde im Rahmen einer Bachelorarbeit entwickelt "
-    "und dient ausschließlich zu Lern- und Demonstrationszwecken. "
-    "Eingaben werden zur Verarbeitung an OpenAI übermittelt.",
-    icon="🔬"
-)
+# ── Prototyp-Hinweis ──
+# Embeddings laufen immer über OpenAI (siehe design_decisions.md);
+# der Chat-Pfad ist variabel — das spiegelt der Hinweistext wider.
+def _privacy_notice() -> str:
+    base = (
+        "**Prototyp** — Diese Anwendung wurde im Rahmen einer "
+        "Bachelorarbeit entwickelt und dient ausschließlich zu Lern- "
+        "und Demonstrationszwecken."
+    )
+    parts = ["Embeddings über OpenAI"]
+    if st.session_state.get("user_api_key"):
+        provider = st.session_state.get("user_provider", "API")
+        parts.append(f"Chat-Anfragen über {provider}")
+    else:
+        parts.append("Chat-Anfragen über lokales Ollama")
+    return (
+        base
+        + " Hinweis: "
+        + " und ".join(parts)
+        + " — beachte die Datenschutzerklärung des jeweiligen Anbieters."
+    )
 
-# bereich: datenbank starten
+st.info(_privacy_notice(), icon="🔬")
+
+# ── Datenbank initialisieren ──
 @st.cache_resource
 def setup_database():
     init_db()
@@ -671,7 +957,7 @@ except Exception as e:
     db_connected = False
     db_error = str(e)
 
-# bereich: session state starten
+# ── Session State initialisieren ──
 if "chat_history" not in st.session_state:
     st.session_state.chat_history = []
 if "session_id" not in st.session_state:
@@ -689,10 +975,21 @@ if "quiz_score" not in st.session_state:
     st.session_state.quiz_score = {"correct": 0, "total": 0}
 if "uploader_key" not in st.session_state:
     st.session_state.uploader_key = 0
+if "user_api_key" not in st.session_state:
+    st.session_state.user_api_key = ""
+if "user_provider" not in st.session_state:
+    st.session_state.user_provider = "openai"
 
-# bereich: sidebar
+# ── First-Run-Wizard ──
+# Wenn die Erstkonfiguration noch nicht abgeschlossen ist, übernimmt der
+# Wizard den Hauptbereich und wir stoppen den Rest des Skripts.
+if db_connected and not _setup_completed():
+    _render_setup_wizard()
+    st.stop()
+
+# ── Sidebar ──
 with st.sidebar:
-    # branding-button (klickbar -> startseite)
+    # Branding-Button (klickbar → Startseite)
     if st.button("🎓\nKfz-Haftpflicht\nLern-Assistent", use_container_width=True, key="brand_home"):
         st.session_state.mode = None
         st.session_state.chat_history = []
@@ -704,7 +1001,7 @@ with st.sidebar:
 
     st.divider()
 
-    # modus-auswahl
+    # Modus-Auswahl
     modes = ["Chat", "Quiz", "Sparring"]
     current_index = modes.index(st.session_state.mode) if st.session_state.mode in modes else None
     new_mode = st.radio(
@@ -715,7 +1012,7 @@ with st.sidebar:
         index=current_index
     )
 
-    # bei moduswechsel chat-verlauf zurücksetzen
+    # Bei Moduswechsel Chat-Verlauf zurücksetzen
     if new_mode is not None and new_mode != st.session_state.mode:
         st.session_state.mode = new_mode
         st.session_state.chat_history = []
@@ -735,16 +1032,154 @@ with st.sidebar:
 
     st.divider()
 
+    # ── Embedding-Status (read-only) ──
+    # Schlüssel wurde im Setup-Wizard hinterlegt; hier nur Info-Zeile.
+    st.markdown(
+        '<div class="sidebar-section">Embeddings</div>',
+        unsafe_allow_html=True,
+    )
+    st.caption(
+        "Aktiv: <b>OpenAI text-embedding-3-small</b><br/>"
+        "Schlüssel im Setup hinterlegt — über Erweitert ▶ Reset änderbar.",
+        unsafe_allow_html=True,
+    )
+
+    st.divider()
+
+    # ── Chat-Anbieter ──
+    has_user_key = bool(st.session_state.user_api_key)
+    label = (
+        f"Chat-Anbieter aktiv ({st.session_state.user_provider})"
+        if has_user_key else "Chat-Anbieter wählen (Ollama lokal als Default)"
+    )
+    # Expander-Zustand:
+    # • Beim aller­ersten Laden ohne Key einmalig offen (Orientierungshilfe).
+    # • Sonst zu — der User öffnet bei Bedarf per Klick auf den Header.
+    # • Bleibt offen, wenn der User innerhalb interagiert (Provider/Key) —
+    #   wird per on_change/on_click-Callback gesetzt.
+    # • Schließt automatisch bei jeder Aktion außerhalb (Modus-Wechsel,
+    #   Buttons …), weil _expanded_open dann auf False fällt.
+    # • Nach erfolgreichem "Übernehmen" zwingend zu.
+    if "apikey_expander_initial_done" not in st.session_state:
+        st.session_state.apikey_expander_initial_done = True
+        _initial_open = not has_user_key
+    else:
+        _initial_open = False
+
+    _keep_open = st.session_state.pop("apikey_keep_open", False)
+    _force_collapse = st.session_state.pop("apikey_just_applied", False)
+
+    if _force_collapse:
+        _expander_open = False
+    elif _keep_open:
+        _expander_open = True
+    else:
+        _expander_open = _initial_open
+
+    def _hold_apikey_expander_open():
+        """Markiert den Expander für den nächsten Rerun als 'offen halten'.
+        Wird über on_change/on_click an Widgets innerhalb des Expanders
+        gehängt, damit der User dort weiterarbeiten kann ohne dass der
+        Expander zwischen jedem Klick zuklappt."""
+        st.session_state.apikey_keep_open = True
+
+    with st.expander(label, expanded=_expander_open):
+        if has_user_key:
+            st.caption(
+                "Chat-Antworten werden über deinen Schlüssel bei "
+                f"<b>{st.session_state.user_provider}</b> generiert.",
+                unsafe_allow_html=True,
+            )
+        else:
+            st.caption(
+                "Ohne Schlüssel wird auf eine lokale Ollama-Instanz "
+                "zurückgegriffen, kostenlos aber Ollama muss installiert "
+                "und gestartet sein (https://ollama.com). Das Modell "
+                "`llama3.2:3b` (~2,0 GB) wird beim ersten Aufruf "
+                "automatisch heruntergeladen. Falls der Auto-Pull "
+                "scheitert, einmalig im Terminal: `ollama pull llama3.2:3b`. "
+                "Schneller und ohne Download geht es mit einem kostenlosen "
+                "Groq-Schlüssel (https://groq.com)."
+            )
+
+        # Radio-Optionen inkl. expliziter "Kein Schlüssel"-Option
+        _provider_options = ["none", "openai", "groq", "gemini"]
+        _provider_labels = {
+            "none": "Kein Schlüssel (Ollama lokal)",
+            "openai": "OpenAI",
+            "groq": "Groq (kostenlos)",
+            "gemini": "Google Gemini",
+        }
+        # Vorauswahl: bei vorhandenem Schlüssel der gespeicherte Provider,
+        # sonst die "Kein Schlüssel"-Option
+        if has_user_key and st.session_state.user_provider in _provider_options:
+            _initial_idx = _provider_options.index(st.session_state.user_provider)
+        else:
+            _initial_idx = 0  # "none"
+
+        provider_choice = st.radio(
+            "Anbieter",
+            options=_provider_options,
+            format_func=lambda x: _provider_labels[x],
+            index=_initial_idx,
+            key="provider_select",
+            on_change=_hold_apikey_expander_open,
+        )
+
+        # API-Key-Feld nur anzeigen, wenn ein Provider mit Schlüssel gewählt ist
+        if provider_choice == "none":
+            key_input = ""
+            st.caption(
+                "Ollama wird verwendet. Kein Schlüssel nötig. "
+                "Klicke auf <b>Übernehmen</b>, um die Auswahl zu speichern.",
+                unsafe_allow_html=True,
+            )
+        else:
+            key_input = st.text_input(
+                "API-Schlüssel",
+                value=st.session_state.user_api_key,
+                type="password",
+                placeholder="sk-... / gsk_... / AIzaSy...",
+                help="Wird nur in deiner Browser-Sitzung gespeichert, nicht serverseitig.",
+                key="api_key_input",
+                on_change=_hold_apikey_expander_open,
+            )
+
+        if st.button("Übernehmen", use_container_width=True, key="apply_key",
+                     type="primary", on_click=_hold_apikey_expander_open):
+            if provider_choice == "none":
+                st.session_state.user_api_key = ""
+                st.session_state.user_provider = "openai"  # neutraler Default
+                st.session_state.apikey_just_applied = True
+                st.rerun()
+            else:
+                stripped = key_input.strip()
+                if stripped:
+                    st.session_state.user_api_key = stripped
+                    st.session_state.user_provider = provider_choice
+                    st.session_state.apikey_just_applied = True
+                    st.rerun()
+                else:
+                    # Bei Validierungsfehler KEIN st.rerun() — sonst wird die
+                    # Warnung sofort wieder weggerendert, ohne dass man sie
+                    # lesen kann. Expander bleibt offen, Warnung steht.
+                    st.warning(
+                        "Kein Schlüssel eingegeben — bitte ausfüllen oder "
+                        'die Option „Kein Schlüssel (Ollama lokal)" wählen.'
+                    )
+
+    st.divider()
+
     if not db_connected:
         st.error(f"Datenbankverbindung fehlgeschlagen: {db_error}")
         st.info("Starte PostgreSQL mit: `docker-compose up -d`")
         st.stop()
 
-    # dokumente anzeigen
+    # Dokumente anzeigen
     documents = get_all_documents()
     chunk_count = get_chunk_count()
 
-    # zahlen anzeigen
+    # Stats
     st.markdown(f"""
     <div class="stat-row">
         <div class="stat-card">
@@ -758,7 +1193,7 @@ with st.sidebar:
     </div>
     """, unsafe_allow_html=True)
 
-    # dokumentenliste
+    # Dokumentenliste
     st.markdown('<div class="sidebar-section">Wissensbasis</div>', unsafe_allow_html=True)
 
     if documents:
@@ -785,7 +1220,7 @@ with st.sidebar:
 
     st.divider()
 
-    # pdf-upload
+    # PDF Upload
     st.markdown('<div class="sidebar-section">Dokument hinzufügen</div>', unsafe_allow_html=True)
     uploaded_file = st.file_uploader(
         "PDF hochladen",
@@ -814,14 +1249,68 @@ with st.sidebar:
                 st.info("Dokument bereits vorhanden.")
             else:
                 st.error(f"Fehler: {result.get('message', 'Unbekannt')}")
-            # uploader zurücksetzen
+            # Uploader zurücksetzen
             st.session_state.uploader_key += 1
             st.rerun()
 
+    st.divider()
 
-# bereich: hauptbereich
+    # ── Erweitert: Wissensbasis zurücksetzen ──
+    # Nötig, wenn der Studi den Embedding-Provider wechseln will (Vektoren
+    # sind dann nicht mehr kompatibel) oder einen sauberen Setup-Stand
+    # haben möchte. Zwei-Klick-Confirm gegen versehentliches Auslösen.
+    with st.expander("⚙ Erweitert", expanded=False):
+        st.caption(
+            "Setzt alle Chunks, Dokumente, Chat-Verläufe und die "
+            "Setup-Konfiguration zurück. Beim nächsten App-Start läuft "
+            "die Erstkonfiguration erneut."
+        )
+        if not st.session_state.get("confirm_reset"):
+            if st.button(
+                "Wissensbasis zurücksetzen",
+                key="reset_request",
+                use_container_width=True,
+            ):
+                st.session_state.confirm_reset = True
+                st.rerun()
+        else:
+            st.warning(
+                "Wirklich alle Daten löschen? Dieser Schritt kann nicht "
+                "rückgängig gemacht werden."
+            )
+            cc1, cc2 = st.columns(2)
+            with cc1:
+                if st.button(
+                    "Ja, zurücksetzen",
+                    type="primary",
+                    use_container_width=True,
+                    key="reset_confirm",
+                ):
+                    reset_knowledge_base()
+                    reset_provider_caches()
+                    # Session-State leeren — der Wizard startet damit frisch.
+                    for k in (
+                        "confirm_reset", "wizard_step",
+                        "user_api_key", "user_provider",
+                        "chat_history", "session_id",
+                        "quiz_data", "quiz_answered", "quiz_score",
+                        "mode", "apikey_expander_initial_done",
+                    ):
+                        st.session_state.pop(k, None)
+                    st.rerun()
+            with cc2:
+                if st.button(
+                    "Abbrechen",
+                    use_container_width=True,
+                    key="reset_cancel",
+                ):
+                    st.session_state.confirm_reset = False
+                    st.rerun()
 
-# bereich: startscreen (kein modus ausgewählt)
+
+# ── Hauptbereich ──
+
+# ── Startscreen (kein Modus ausgewählt) ──
 if st.session_state.mode is None:
     st.markdown("""
     <div class="main-header">
@@ -858,12 +1347,12 @@ if st.session_state.mode is None:
             "Die Wissensbasis ist leer. Bitte lade PDFs hoch, um den Assistenten nutzen zu können."
         )
 
-# bereich: chat-modus
+# ── Chat-Modus ──
 elif st.session_state.mode == "Chat":
 
     st.markdown('<div class="mode-badge mode-badge-chat">💬 Chat-Modus</div>', unsafe_allow_html=True)
 
-    # welcome-screen wenn noch kein chat-verlauf da ist
+    # Welcome Screen wenn kein Chat-Verlauf
     if not st.session_state.chat_history:
         st.markdown("""
         <div class="main-header">
@@ -898,25 +1387,29 @@ elif st.session_state.mode == "Chat":
                 "Die Wissensbasis ist leer. Bitte lade PDFs hoch, um den Assistenten nutzen zu können."
             )
 
-    # chat-verlauf anzeigen
-    for msg in st.session_state.chat_history:
+    # Chat-Verlauf anzeigen (inkl. gespeicherter Quellen pro Assistant-Nachricht)
+    for idx, msg in enumerate(st.session_state.chat_history):
         with st.chat_message(msg["role"], avatar="🧑" if msg["role"] == "user" else "🎓"):
             st.markdown(msg["content"])
+            if msg["role"] == "assistant" and msg.get("sources"):
+                with st.expander("Verwendete Quellen anzeigen"):
+                    _render_chunk_sources(msg["sources"], key_prefix=f"chat_{idx}")
 
-    # chat-eingabe
+    # Chat-Eingabe
     if prompt := st.chat_input("Stelle eine Frage zur Kfz-Haftpflichtversicherung..."):
         st.session_state.chat_history.append({"role": "user", "content": prompt})
         with st.chat_message("user", avatar="🧑"):
             st.markdown(prompt)
 
         with st.chat_message("assistant", avatar="🎓"):
-            # prüfen, ob es nur eine begrüßung oder smalltalk ist
+            # Prüfen ob es eine Begrüßung/Smalltalk ist
             if is_greeting(prompt):
                 answer = generate_greeting_response(
                     prompt,
                     st.session_state.chat_history[:-1]
                 )
                 context_chunks = []
+                st.markdown(answer)
             else:
                 with st.spinner("Suche in der Wissensbasis..."):
                     standalone_query = rewrite_question_with_history(
@@ -925,47 +1418,38 @@ elif st.session_state.mode == "Chat":
                     )
                     context_chunks = retrieve(standalone_query)
 
-                    if not context_chunks:
-                        answer = (
-                            "Leider konnte ich keine relevanten Informationen in der "
-                            "Wissensbasis finden. Bitte formuliere deine Frage anders "
-                            "oder stelle sicher, dass die relevanten Dokumente hochgeladen sind."
-                        )
-                    else:
-                        answer = generate_answer(
+                if not context_chunks:
+                    answer = (
+                        "Leider konnte ich keine relevanten Informationen in der "
+                        "Wissensbasis finden. Bitte formuliere deine Frage anders "
+                        "oder stelle sicher, dass die relevanten Dokumente hochgeladen sind."
+                    )
+                    st.markdown(answer)
+                else:
+                    answer = st.write_stream(
+                        generate_answer_stream(
                             prompt,
                             context_chunks,
-                            st.session_state.chat_history[:-1]
+                            st.session_state.chat_history[:-1],
                         )
+                    )
 
-            st.markdown(answer)
-
-            # quellen nur zeigen, wenn die antwort wirklich auf kontext basiert
-            answer_lower = answer.lower()
-            show_sources = context_chunks and not any(h in answer_lower for h in NO_ANSWER_HINTS)
-
-            if show_sources:
-                with st.expander("Verwendete Quellen anzeigen"):
-                    for chunk in context_chunks:
-                        safe_filename = html.escape(chunk['filename'])
-                        safe_content = html.escape(chunk['content'][:250])
-                        suffix = "..." if len(chunk['content']) > 250 else ""
-                        st.markdown(f"""
-                        <div class="source-chunk">
-                            <div class="source-header">
-                                📄 {safe_filename} — Seite {chunk['page_number']}
-                                &nbsp;&middot;&nbsp; Relevanz: {chunk.get('rerank_score', 0):.3f}
-                            </div>
-                            <div class="source-text">{safe_content}{suffix}</div>
-                        </div>
-                        """, unsafe_allow_html=True)
-
-        st.session_state.chat_history.append({"role": "assistant", "content": answer})
+        # Quellen mit der Assistant-Nachricht persistieren — der nächste Rerun
+        # rendert sie aus der History, sodass Buttons (PDF-Sprung) auch nach
+        # einem Klick stabil bleiben.
+        answer_lower = answer.lower()
+        show_sources = bool(context_chunks) and not any(h in answer_lower for h in NO_ANSWER_HINTS)
+        st.session_state.chat_history.append({
+            "role": "assistant",
+            "content": answer,
+            "sources": context_chunks if show_sources else None,
+        })
         if st.session_state.session_id:
             save_chat_message(st.session_state.session_id, "user", prompt)
             save_chat_message(st.session_state.session_id, "assistant", answer)
+        st.rerun()
 
-# bereich: quiz-modus
+# ── Quiz-Modus ──
 elif st.session_state.mode == "Quiz":
     st.markdown('<div class="mode-badge mode-badge-quiz">🧠 Quiz-Modus</div>', unsafe_allow_html=True)
     st.markdown("""
@@ -976,7 +1460,7 @@ elif st.session_state.mode == "Quiz":
     </div>
     """, unsafe_allow_html=True)
 
-    # welcome-karten, wenn noch keine frage erzeugt wurde
+    # Welcome-Karten wenn noch keine Frage generiert
     if not st.session_state.quiz_data and st.session_state.quiz_score["total"] == 0:
         st.markdown("""
         <div class="welcome-grid">
@@ -998,7 +1482,7 @@ elif st.session_state.mode == "Quiz":
         </div>
         """, unsafe_allow_html=True)
 
-    # score anzeigen
+    # Score anzeigen
     score = st.session_state.quiz_score
     if score["total"] > 0:
         pct = score["correct"] / score["total"]
@@ -1009,7 +1493,7 @@ elif st.session_state.mode == "Quiz":
         """, unsafe_allow_html=True)
         st.progress(pct)
 
-    # quiz-thema
+    # Quiz-Thema
     col1, col2 = st.columns([3, 1])
     with col1:
         quiz_topic = st.text_input(
@@ -1021,20 +1505,25 @@ elif st.session_state.mode == "Quiz":
     with col2:
         generate_btn = st.button("Neue Frage", type="primary", use_container_width=True)
 
-    # enter im textfeld oder button-klick erzeugt eine neue frage
+    # Enter im Textfeld oder Button-Klick generiert neue Frage
     topic_submitted = quiz_topic and quiz_topic != st.session_state.get("last_quiz_topic", "")
     if generate_btn or topic_submitted:
         if topic_submitted:
             st.session_state.last_quiz_topic = quiz_topic
         with st.spinner("Generiere Frage..."):
-            quiz_data = generate_quiz_question(quiz_topic if quiz_topic else None)
+            quiz_data, quiz_error = generate_quiz_question(
+                quiz_topic if quiz_topic else None
+            )
             if quiz_data:
                 st.session_state.quiz_data = quiz_data
                 st.session_state.quiz_answered = False
             else:
-                st.error("Konnte keine Frage generieren. Ist die Wissensbasis gefuellt?")
+                st.error(
+                    quiz_error
+                    or "Konnte keine Frage generieren. Bitte erneut versuchen."
+                )
 
-    # frage anzeigen
+    # Frage anzeigen
     if st.session_state.quiz_data:
         qd = st.session_state.quiz_data
 
@@ -1094,12 +1583,30 @@ elif st.session_state.mode == "Quiz":
 
             st.info(f"**Erklärung:** {qd['explanation']}")
 
-# bereich: sparring-modus (sokratisch)
+            # PDF-Sprung-Buttons zur Verifikation der Antwort
+            quiz_sources = qd.get("source_chunks") or []
+            if quiz_sources:
+                st.markdown("**Antwort im Skript nachlesen:**")
+                for i, src in enumerate(quiz_sources, 1):
+                    pdf_path = os.path.join(DOCUMENTS_DIR, src["filename"])
+                    if os.path.exists(pdf_path):
+                        if st.button(
+                            f"📖 {src['filename']} — Seite {src['page_number']}",
+                            key=f"pdf_quiz_{i}_{src['page_number']}",
+                            use_container_width=True,
+                        ):
+                            _show_pdf_dialog(
+                                pdf_path,
+                                src["page_number"],
+                                src["filename"],
+                            )
+
+# ── Sparring-Modus (Sokratisch) ──
 elif st.session_state.mode == "Sparring":
 
     st.markdown('<div class="mode-badge mode-badge-sparring">⚡ Sparring-Modus</div>', unsafe_allow_html=True)
 
-    # welcome-screen wenn noch kein chat-verlauf da ist
+    # Welcome Screen wenn kein Chat-Verlauf
     if not st.session_state.chat_history:
         st.markdown("""
         <div class="main-header">
@@ -1129,12 +1636,15 @@ elif st.session_state.mode == "Sparring":
         </div>
         """, unsafe_allow_html=True)
 
-    # chat-verlauf anzeigen
-    for msg in st.session_state.chat_history:
+    # Chat-Verlauf anzeigen (inkl. gespeicherter Quellen pro Assistant-Nachricht)
+    for idx, msg in enumerate(st.session_state.chat_history):
         with st.chat_message(msg["role"], avatar="🧑" if msg["role"] == "user" else "⚡"):
             st.markdown(msg["content"])
+            if msg["role"] == "assistant" and msg.get("sources"):
+                with st.expander("Verwendete Quellen anzeigen"):
+                    _render_chunk_sources(msg["sources"], key_prefix=f"sparring_{idx}")
 
-    # chat-eingabe
+    # Chat-Eingabe
     if prompt := st.chat_input("Stelle eine Frage — ich helfe dir, die Antwort selbst zu finden..."):
         st.session_state.chat_history.append({"role": "user", "content": prompt})
         with st.chat_message("user", avatar="🧑"):
@@ -1147,6 +1657,7 @@ elif st.session_state.mode == "Sparring":
                     st.session_state.chat_history[:-1]
                 )
                 context_chunks = []
+                st.markdown(answer)
             else:
                 with st.spinner("Denke nach..."):
                     standalone_query = rewrite_question_with_history(
@@ -1155,42 +1666,30 @@ elif st.session_state.mode == "Sparring":
                     )
                     context_chunks = retrieve(standalone_query)
 
-                    if not context_chunks:
-                        answer = (
-                            "Leider konnte ich keine relevanten Informationen in der "
-                            "Wissensbasis finden. Bitte formuliere deine Frage anders "
-                            "oder stelle sicher, dass die relevanten Dokumente hochgeladen sind."
-                        )
-                    else:
-                        answer = generate_sparring_response(
+                if not context_chunks:
+                    answer = (
+                        "Leider konnte ich keine relevanten Informationen in der "
+                        "Wissensbasis finden. Bitte formuliere deine Frage anders "
+                        "oder stelle sicher, dass die relevanten Dokumente hochgeladen sind."
+                    )
+                    st.markdown(answer)
+                else:
+                    answer = st.write_stream(
+                        generate_sparring_stream(
                             prompt,
                             context_chunks,
-                            st.session_state.chat_history[:-1]
+                            st.session_state.chat_history[:-1],
                         )
+                    )
 
-            st.markdown(answer)
-
-            # quellen im sparring-modus anzeigen (gleiche logik wie im chat)
-            answer_lower = answer.lower()
-            show_sources = context_chunks and not any(h in answer_lower for h in NO_ANSWER_HINTS)
-
-            if show_sources:
-                with st.expander("Verwendete Quellen anzeigen"):
-                    for chunk in context_chunks:
-                        safe_filename = html.escape(chunk['filename'])
-                        safe_content = html.escape(chunk['content'][:250])
-                        suffix = "..." if len(chunk['content']) > 250 else ""
-                        st.markdown(f"""
-                        <div class="source-chunk">
-                            <div class="source-header">
-                                📄 {safe_filename} — Seite {chunk['page_number']}
-                                &nbsp;&middot;&nbsp; Relevanz: {chunk.get('rerank_score', 0):.3f}
-                            </div>
-                            <div class="source-text">{safe_content}{suffix}</div>
-                        </div>
-                        """, unsafe_allow_html=True)
-
-        st.session_state.chat_history.append({"role": "assistant", "content": answer})
+        answer_lower = answer.lower()
+        show_sources = bool(context_chunks) and not any(h in answer_lower for h in NO_ANSWER_HINTS)
+        st.session_state.chat_history.append({
+            "role": "assistant",
+            "content": answer,
+            "sources": context_chunks if show_sources else None,
+        })
         if st.session_state.session_id:
             save_chat_message(st.session_state.session_id, "user", prompt)
             save_chat_message(st.session_state.session_id, "assistant", answer)
+        st.rerun()

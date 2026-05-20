@@ -1,17 +1,14 @@
-from openai import OpenAI
-from config import OPENAI_API_KEY, LLM_MODEL
-
-client = OpenAI(api_key=OPENAI_API_KEY)
+from generation.llm import chat
 
 
 def rewrite_question_with_history(
     chat_history: list[dict],
-    current_question: str
+    current_question: str,
 ) -> str:
-    """formuliert die aktuelle frage mit chatverlauf neu.
+    """Formuliert die aktuelle Frage unter Berücksichtigung der Chat-History um.
 
-    bei folgefragen wie "was bedeutet das genau?" wird der verlauf
-    genutzt, damit eine eigenständige suchfrage entsteht.
+    Bei Folgefragen wie "Was bedeutet das genau?" wird der Kontext
+    aus der History einbezogen, um eine eigenständige Suchanfrage zu erstellen.
     """
     if not chat_history:
         return current_question
@@ -21,10 +18,8 @@ def rewrite_question_with_history(
         for msg in chat_history[-6:]
     )
 
-    response = client.chat.completions.create(
-        model=LLM_MODEL,
-        temperature=0.0,
-        messages=[
+    return chat(
+        [
             {
                 "role": "system",
                 "content": (
@@ -33,7 +28,7 @@ def rewrite_question_with_history(
                     "Kontext zu verstehen. Gib NUR die umformulierte Frage aus, "
                     "ohne Erklärungen. Wenn die Frage bereits eigenständig ist, "
                     "gib sie unverändert zurück."
-                )
+                ),
             },
             {
                 "role": "user",
@@ -41,9 +36,9 @@ def rewrite_question_with_history(
                     f"Chatverlauf:\n{history_text}\n\n"
                     f"Aktuelle Frage: {current_question}\n\n"
                     f"Umformulierte eigenständige Frage:"
-                )
-            }
-        ]
+                ),
+            },
+        ],
+        temperature=0.0,
+        max_tokens=256,
     )
-
-    return response.choices[0].message.content.strip()

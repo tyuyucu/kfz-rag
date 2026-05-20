@@ -1,14 +1,47 @@
+import contextvars
+from contextlib import contextmanager
+
 import psycopg2
 from psycopg2.extras import RealDictCursor
 from config import DATABASE_URL, EMBEDDING_DIMENSION
 
 
+_current_schema: contextvars.ContextVar[str | None] = contextvars.ContextVar(
+    "_current_schema", default=None
+)
+
+
 def get_connection():
-    return psycopg2.connect(DATABASE_URL)
+    """Liefert eine Postgres-Verbindung. Wenn ein Eval-Schema aktiv ist
+    (siehe `use_schema`), wird `search_path` auf dieses Schema gesetzt —
+    damit operiert dieselbe Codebasis wahlweise auf Produktions- oder
+    Evaluations-Tabellen, ohne Query-Änderungen.
+    """
+    conn = psycopg2.connect(DATABASE_URL)
+    schema = _current_schema.get()
+    if schema:
+        cur = conn.cursor()
+        cur.execute(f'SET search_path TO "{schema}", public')
+        conn.commit()
+        cur.close()
+    return conn
+
+
+@contextmanager
+def use_schema(name: str | None):
+    """Setzt für den gegebenen Block das aktive Schema für alle
+    `get_connection()`-Aufrufe. `None` bedeutet Default-Verhalten (public).
+    Der Kontext ist ContextVar-basiert und damit pro Thread/Task sicher.
+    """
+    token = _current_schema.set(name)
+    try:
+        yield
+    finally:
+        _current_schema.reset(token)
 
 
 def init_db():
-    """legt alle nötigen tabellen und erweiterungen an."""
+    """Erstellt alle benötigten Tabellen und Extensions."""
     conn = get_connection()
     try:
         cur = conn.cursor()
@@ -65,6 +98,94 @@ def init_db():
             );
         """)
 
+        # Persistente App-Konfiguration (lokale Distribution: Embedding-
+        # Provider-Wahl, OpenAI-Embedding-Key, Setup-Status). Daten leben
+        # mit der DB im Docker-Volume — Backup-Strategie wie für Vektoren.
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS app_config (
+                key TEXT PRIMARY KEY,
+                value TEXT,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        """)
+
+        conn.commit()
+        cur.close()
+    finally:
+        conn.close()
+
+
+# ── Config-Tabelle: Key/Value-Persistenz für lokale App-Einstellungen ──
+
+def get_config(key: str) -> str | None:
+    """Liest einen Config-Wert. None, wenn nicht gesetzt."""
+    conn = get_connection()
+    try:
+        cur = conn.cursor()
+        cur.execute("SELECT value FROM app_config WHERE key = %s", (key,))
+        row = cur.fetchone()
+        cur.close()
+        return row[0] if row else None
+    finally:
+        conn.close()
+
+
+def set_config(key: str, value: str | None) -> None:
+    """Setzt einen Config-Wert (UPSERT). value=None löscht den Eintrag."""
+    conn = get_connection()
+    try:
+        cur = conn.cursor()
+        if value is None:
+            cur.execute("DELETE FROM app_config WHERE key = %s", (key,))
+        else:
+            cur.execute(
+                """INSERT INTO app_config (key, value, updated_at)
+                   VALUES (%s, %s, CURRENT_TIMESTAMP)
+                   ON CONFLICT (key) DO UPDATE SET
+                       value = EXCLUDED.value,
+                       updated_at = CURRENT_TIMESTAMP""",
+                (key, value),
+            )
+        conn.commit()
+        cur.close()
+    finally:
+        conn.close()
+
+
+def get_all_config() -> dict[str, str]:
+    """Liefert alle Config-Einträge als Dict — z. B. für Debug-Anzeige."""
+    conn = get_connection()
+    try:
+        cur = conn.cursor()
+        cur.execute("SELECT key, value FROM app_config")
+        rows = cur.fetchall()
+        cur.close()
+        return {k: v for k, v in rows}
+    finally:
+        conn.close()
+
+
+def reset_knowledge_base(*, drop_app_config: bool = True) -> None:
+    """Setzt die Wissensbasis komplett zurück: löscht alle Chunks,
+    Dokumente und Chat-Historie. Wenn `drop_app_config=True` (Default),
+    wird auch die Embedding-Provider-Wahl entfernt — der Setup-Wizard
+    läuft beim nächsten App-Start erneut.
+
+    Hochgeladene PDF-Dateien im Filesystem-Verzeichnis `documents/`
+    bleiben unberührt; sie werden separat gehandhabt, damit der Studi
+    sie ggf. ohne erneutes Hochladen wiederverwenden kann.
+    """
+    conn = get_connection()
+    try:
+        cur = conn.cursor()
+        # CASCADE auf chunks via documents → chunks. Chat-Historie löschen
+        # wir explizit, weil sie nicht an documents hängt.
+        cur.execute("DELETE FROM chunks;")
+        cur.execute("DELETE FROM documents;")
+        cur.execute("DELETE FROM chat_messages;")
+        cur.execute("DELETE FROM chat_sessions;")
+        if drop_app_config:
+            cur.execute("DELETE FROM app_config;")
         conn.commit()
         cur.close()
     finally:

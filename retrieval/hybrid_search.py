@@ -4,9 +4,9 @@ from config import HYBRID_SEARCH_TOP_K
 
 
 def hybrid_search_query(query: str, top_k: int = HYBRID_SEARCH_TOP_K) -> dict:
-    """führt semantische suche und volltextsuche parallel aus.
+    """Fuehrt parallele semantische und Volltext-Suche durch.
 
-    rückgabe: dict mit den listen `semantic` und `fulltext`.
+    Returns: dict mit 'semantic' und 'fulltext' Ergebnislisten
     """
     query_embedding = embed_query(query)
     semantic_results = semantic_search(query_embedding, top_k=top_k)

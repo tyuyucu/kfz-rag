@@ -27,9 +27,10 @@ Thumbs.db
 # Logs
 *.log
 
-# Local DB data
+# Lokale Postgres-Daten (falls jemand ohne Docker-Volume entwickelt)
 postgres_data/
 
-# PDF documents (already ingested in Supabase, copyright protection)
+# PDF-Dokumente (Urheberrecht — werden ueber den Wizard hochgeladen,
+# nicht ueber das Repo verteilt)
 documents/*.pdf
 !documents/.gitkeep

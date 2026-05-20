@@ -4,9 +4,9 @@ from config import CHUNK_SIZE, CHUNK_OVERLAP
 
 
 def _is_toc_page(text: str) -> bool:
-    """erkennt seiten mit inhaltsverzeichnis über typische muster.
+    """Erkennt Inhaltsverzeichnis-Seiten anhand typischer Muster.
 
-    typisch sind viele zeilen mit punktreihen oder seitenzahlen am ende.
+    Typisch: viele Zeilen mit Punktreihen (....) oder Seitenzahlen am Ende.
     """
     lines = text.strip().split("\n")
     if len(lines) < 3:
@@ -19,12 +19,12 @@ def _is_toc_page(text: str) -> bool:
 
 
 def chunk_pages(pages: list[dict]) -> list[dict]:
-    """teilt den text pro seite in kleinere abschnitte auf.
+    """Teilt seitenweisen Text in Chunks auf.
 
-    eingabe: liste mit page_number und text.
-    ausgabe: liste mit content, page_number und chunk_index.
+    Input: Liste von dicts mit keys: page_number, text
+    Output: Liste von dicts mit keys: content, page_number, chunk_index
 
-    seiten mit inhaltsverzeichnis werden ausgelassen.
+    Inhaltsverzeichnis-Seiten werden übersprungen.
     """
     splitter = RecursiveCharacterTextSplitter(
         chunk_size=CHUNK_SIZE,

@@ -1,7 +1,4 @@
-from openai import OpenAI
-from config import OPENAI_API_KEY, LLM_MODEL
-
-client = OpenAI(api_key=OPENAI_API_KEY)
+from generation.llm import chat, chat_stream, chat_with_usage
 
 SYSTEM_PROMPT = """Du bist ein Lern-Assistent für die Vorlesung "Kfz-Haftpflichtversicherung" an einer deutschen Hochschule. Deine Aufgabe ist es, Studierenden beim Lernen zu helfen.
 
@@ -19,32 +16,39 @@ GREETING_PROMPT = """Du bist ein freundlicher Lern-Assistent für die Vorlesung 
 Der Studierende hat dich gerade begrüßt oder Smalltalk gemacht. Antworte freundlich und kurz auf Deutsch. Weise darauf hin, dass du bei Fragen zur Kfz-Haftpflichtversicherung helfen kannst. Halte die Antwort kurz (2-3 Sätze). Gib KEINE Quellen an."""
 
 SPARRING_PROMPT = """Du bist ein sokratischer Lernassistent für die Vorlesung "Kfz-Haftpflichtversicherung". \
-Deine Aufgabe ist es, den Studierenden durch gezieltes Fragen zum selbstständigen Denken \
-zu führen – du gibst KEINE direkten Antworten.
+Deine Aufgabe ist es, den Studierenden durch gezieltes Fragen zum selbstständigen Denken zu führen.
 
-REGELN:
-- Beantworte Fragen NIEMALS direkt
-- Stelle stattdessen 1-2 gezielte Gegenfragen die den Studierenden zur Antwort führen
-- Wenn der Studierende eine richtige Teilantwort gibt: bestätige kurz und vertiefe mit einer Folgefrage
+UNTERSCHEIDE DEN FRAGETYP:
+
+A) DEFINITIONS- ODER VERSTÄNDNISFRAGEN ("Was ist X?", "Was bedeutet X?", "Erkläre X", "Definiere X", "Was sagt § X?")
+   → Hier hat der Studierende eine Wissenslücke. Reine Gegenfragen frustrieren ihn.
+   - Gib zuerst eine knappe sachliche Definition oder Erklärung (1-2 Sätze, ausschließlich aus dem Kontext).
+   - Schließe direkt mit EINER sokratischen Folgefrage an, die das Verständnis vertieft (z.B. "Welche Konsequenz hat das, wenn …?" oder "Wie passt das zu Fall X?").
+
+B) ANWENDUNGS-, BEWERTUNGS- UND SUBSUMTIONSFRAGEN ("Wann greift…?", "Wie würdest du Fall X einschätzen?", "Welche Rolle spielt…?")
+   → Hier ist sokratisches Hinführen sinnvoll.
+   - Stelle 1-2 gezielte Gegenfragen, die den Studierenden zur Antwort führen.
+   - Beantworte die Frage NICHT vorab.
+
+ALLGEMEINE REGELN:
+- Wenn der Studierende eine richtige Teilantwort gibt: bestätige kurz und vertiefe mit einer Folgefrage.
 - Wenn der Studierende falsch liegt: widerspreche nicht direkt, sondern frage "Was steht dazu in §X?" oder "Wie würdest du das mit dem Fall Y vereinbaren?"
-- Nutze ausschließlich die Inhalte aus der bereitgestellten Kontext-Abschnitte (Wissensbasis)
-- Beende die sokratische Sequenz wenn der Studierende die Antwort selbst erarbeitet hat mit einem kurzen Lob und einer Zusammenfassung
-- Bleibe immer im Kontext Kfz-Haftpflichtversicherung
-- Antworte immer auf Deutsch
-- Nenne KEINE Quellen in deiner Antwort — die Quellenangaben werden separat angezeigt"""
+- Wenn der Studierende die Antwort vollständig erarbeitet hat: kurzes Lob plus Zusammenfassung.
+- Nutze ausschließlich die Inhalte aus den Kontext-Abschnitten.
+- Bleibe immer im Kontext Kfz-Haftpflichtversicherung.
+- Antworte immer auf Deutsch.
+- Nenne KEINE Quellen in deiner Antwort — die Quellenangaben werden separat angezeigt."""
 
 
 def is_greeting(query: str) -> bool:
-    """prüft, ob eine nachricht nur begrüßung oder smalltalk ist.
+    """Prüft ob eine Nachricht eine reine Begrüßung oder Smalltalk ist.
 
-    gibt nur true zurück, wenn die nachricht kurz ist und nur grüße enthält.
-    nachrichten mit fachfrage nach der begrüßung zählen nicht als greeting.
+    Gibt nur True zurück wenn die Nachricht KURZ ist und nur Begrüßung enthält.
+    Nachrichten mit Fachfragen nach der Begrüßung werden nicht als Greeting erkannt.
     """
     query_lower = query.strip().lower().rstrip("!?.,:; ")
-    # nur kurze nachrichten (max 60 zeichen) sind reine begrüßungen
     if len(query_lower) > 60:
         return False
-    # optionale präfixe entfernen ("ja danke dir" -> "danke dir")
     prefixes = ["ja ", "ok ", "okay ", "jo ", "jap ", "gut ", "super ", "klar "]
     cleaned = query_lower
     for prefix in prefixes:
@@ -65,83 +69,109 @@ def is_greeting(query: str) -> bool:
 
 
 def generate_greeting_response(query: str, chat_history: list[dict] | None = None) -> str:
-    """gibt eine kurze freundliche antwort auf begrüßungen ohne rag."""
+    """Generiert eine freundliche Antwort auf Begrüßungen ohne RAG."""
     messages = [{"role": "system", "content": GREETING_PROMPT}]
-
     if chat_history:
         for msg in chat_history[-4:]:
             messages.append({"role": msg["role"], "content": msg["content"]})
-
     messages.append({"role": "user", "content": query})
-
-    response = client.chat.completions.create(
-        model=LLM_MODEL,
-        temperature=0.7,
-        messages=messages
-    )
-
-    return response.choices[0].message.content.strip()
+    return chat(messages, temperature=0.7, max_tokens=256)
 
 
-def generate_sparring_response(
-    query: str,
-    context_chunks: list[dict],
-    chat_history: list[dict] | None = None
-) -> str:
-    """gibt eine sokratische antwort mit gegenfragen statt direkter lösung."""
+def _build_chat_messages(query, context_chunks, chat_history):
     context_text = "\n\n---\n\n".join(
         f"[Quelle: {c['filename']}, Seite {c['page_number']}]\n{c['content']}"
         for c in context_chunks
     )
-
-    messages = [{"role": "system", "content": SPARRING_PROMPT}]
-
+    messages = [{"role": "system", "content": SYSTEM_PROMPT}]
     if chat_history:
         for msg in chat_history[-6:]:
             messages.append({"role": msg["role"], "content": msg["content"]})
+    messages.append({
+        "role": "user",
+        "content": f"Kontext:\n{context_text}\n\nFrage: {query}",
+    })
+    return messages
 
-    user_message = (
-        f"Kontext:\n{context_text}\n\n"
-        f"Nachricht des Studierenden: {query}"
+
+def _build_sparring_messages(query, context_chunks, chat_history):
+    context_text = "\n\n---\n\n".join(
+        f"[Quelle: {c['filename']}, Seite {c['page_number']}]\n{c['content']}"
+        for c in context_chunks
     )
-    messages.append({"role": "user", "content": user_message})
-
-    response = client.chat.completions.create(
-        model=LLM_MODEL,
-        temperature=0.4,
-        messages=messages
-    )
-
-    return response.choices[0].message.content.strip()
+    messages = [{"role": "system", "content": SPARRING_PROMPT}]
+    if chat_history:
+        for msg in chat_history[-6:]:
+            messages.append({"role": msg["role"], "content": msg["content"]})
+    messages.append({
+        "role": "user",
+        "content": f"Kontext:\n{context_text}\n\nNachricht des Studierenden: {query}",
+    })
+    return messages
 
 
 def generate_answer(
     query: str,
     context_chunks: list[dict],
-    chat_history: list[dict] | None = None
+    chat_history: list[dict] | None = None,
 ) -> str:
-    """gibt eine antwort auf basis der gefundenen kontext-abschnitte."""
-    context_text = "\n\n---\n\n".join(
-        f"[Quelle: {c['filename']}, Seite {c['page_number']}]\n{c['content']}"
-        for c in context_chunks
-    )
-
-    messages = [{"role": "system", "content": SYSTEM_PROMPT}]
-
-    if chat_history:
-        for msg in chat_history[-6:]:
-            messages.append({"role": msg["role"], "content": msg["content"]})
-
-    user_message = (
-        f"Kontext:\n{context_text}\n\n"
-        f"Frage: {query}"
-    )
-    messages.append({"role": "user", "content": user_message})
-
-    response = client.chat.completions.create(
-        model=LLM_MODEL,
+    """Single-shot Chat-Antwort (ohne Streaming, für Fallback und Tests)."""
+    return chat(
+        _build_chat_messages(query, context_chunks, chat_history),
         temperature=0.2,
-        messages=messages
     )
 
-    return response.choices[0].message.content.strip()
+
+def generate_sparring_response(
+    query: str,
+    context_chunks: list[dict],
+    chat_history: list[dict] | None = None,
+) -> str:
+    """Single-shot sokratische Antwort (ohne Streaming, für Fallback und Tests)."""
+    return chat(
+        _build_sparring_messages(query, context_chunks, chat_history),
+        temperature=0.4,
+    )
+
+
+def generate_answer_stream(
+    query: str,
+    context_chunks: list[dict],
+    chat_history: list[dict] | None = None,
+    *,
+    temperature: float = 0.2,
+):
+    """Streamt die Antwort Token für Token. Generator yields Strings."""
+    yield from chat_stream(
+        _build_chat_messages(query, context_chunks, chat_history),
+        temperature=temperature,
+    )
+
+
+def generate_sparring_stream(
+    query: str,
+    context_chunks: list[dict],
+    chat_history: list[dict] | None = None,
+    *,
+    temperature: float = 0.4,
+):
+    """Streamt die sokratische Antwort Token für Token."""
+    yield from chat_stream(
+        _build_sparring_messages(query, context_chunks, chat_history),
+        temperature=temperature,
+    )
+
+
+def generate_answer_with_usage(
+    query: str,
+    context_chunks: list[dict],
+    chat_history: list[dict] | None = None,
+    *,
+    temperature: float = 0.2,
+) -> tuple[str, dict | None]:
+    """Generiert eine Antwort und liefert zusätzlich die OpenAI-`usage`-Metriken
+    (prompt_tokens, completion_tokens, total_tokens) für die Evaluation."""
+    return chat_with_usage(
+        _build_chat_messages(query, context_chunks, chat_history),
+        temperature=temperature,
+    )
