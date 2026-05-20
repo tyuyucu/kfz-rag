@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   postgres:
     image: pgvector/pgvector:pg16
@@ -12,6 +10,49 @@ services:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U raguser -d ragdb"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  app:
+    build: .
+    container_name: rag_app
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "8501:8501"
+    environment:
+      # DB im selben Compose-Netz erreichbar; user/pass identisch zum
+      # Postgres-Service oben. Lokal abgesichert — keine externe Exposure
+      # ueber Port-Forwarding noetig (Postgres-Port nur fuer Power-User
+      # mit psql-Zugriff offen, nicht fuer die App selbst).
+      DATABASE_URL: postgresql://raguser:ragpassword@postgres:5432/ragdb
+      # Ollama (optional) laeuft auf der Host-Maschine — der App-Container
+      # erreicht ihn ueber host.docker.internal. Auf Linux muss zusaetzlich
+      # `extra_hosts: ["host.docker.internal:host-gateway"]` gesetzt werden
+      # (siehe Override-Block unten — auskommentiert).
+      OLLAMA_HOST: http://host.docker.internal:11434
+      # OPENAI_API_KEY hier nur als Fallback fuer Eval-Skripte. Der
+      # Studi-Embedding-Schluessel liegt in der app_config-Tabelle, der
+      # Chat-Schluessel in st.session_state — beide werden dem Container
+      # nicht ueber env mitgegeben.
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+    volumes:
+      # HuggingFace-Cache: Reranker-Modell (BGE-Reranker-v2-m3, ~1 GB)
+      # bleibt ueber `docker compose down` hinweg persistent.
+      - hf_cache:/root/.cache/huggingface
+      # Hochgeladene PDFs persistieren — sonst waeren sie nach
+      # Container-Neustart weg, obwohl ihre Chunks in Postgres ueberleben.
+      - documents:/app/documents
+    # Linux-User: untenstehende Zeile aktivieren, sonst kann der
+    # App-Container Ollama auf der Host-Maschine nicht erreichen.
+    # extra_hosts:
+    #   - "host.docker.internal:host-gateway"
 
 volumes:
   pgdata:
+  hf_cache:
+  documents:
