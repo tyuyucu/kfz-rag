@@ -18,7 +18,7 @@ from pathlib import Path
 from psycopg2.extras import execute_values
 
 import config  # laedt .env in os.environ
-from db.database import get_connection, use_schema
+from db.database import get_connection, release_connection, use_schema
 from evaluation._schema import ensure_eval_schema
 from ingestion.chunker import chunk_pages
 from ingestion.embedder import embed_texts
@@ -52,7 +52,7 @@ def insert_loop(doc_id: int, chunks: list[dict]) -> None:
         conn.commit()
         cur.close()
     finally:
-        conn.close()
+        release_connection(conn)
 
 
 def insert_bulk(doc_id: int, chunks: list[dict]) -> None:
@@ -75,7 +75,7 @@ def insert_bulk(doc_id: int, chunks: list[dict]) -> None:
         conn.commit()
         cur.close()
     finally:
-        conn.close()
+        release_connection(conn)
 
 
 def _prepare_chunks(pdf_path: Path) -> list[dict]:
@@ -97,7 +97,7 @@ def _reset_schema_tables() -> None:
         conn.commit()
         cur.close()
     finally:
-        conn.close()
+        release_connection(conn)
 
 
 def _insert_doc_row(filename: str) -> int:
@@ -113,7 +113,7 @@ def _insert_doc_row(filename: str) -> int:
         cur.close()
         return doc_id
     finally:
-        conn.close()
+        release_connection(conn)
 
 
 def _append_markdown(result: dict) -> None:

@@ -23,7 +23,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Optional
 
-from db.database import get_connection
+from db.database import get_connection, release_connection
 
 DEFAULT_EF = 2.5
 MIN_EF = 1.3
@@ -109,7 +109,7 @@ def init_sm2_tables() -> None:
         conn.commit()
         cur.close()
     finally:
-        conn.close()
+        release_connection(conn)
 
 
 def load_state(user_id: str, question_hash: str) -> SM2State:
@@ -134,7 +134,7 @@ def load_state(user_id: str, question_hash: str) -> SM2State:
             last_rating=row[4],
         )
     finally:
-        conn.close()
+        release_connection(conn)
 
 
 def save_state(user_id: str, question_hash: str, state: SM2State) -> None:
@@ -166,7 +166,7 @@ def save_state(user_id: str, question_hash: str, state: SM2State) -> None:
         conn.commit()
         cur.close()
     finally:
-        conn.close()
+        release_connection(conn)
 
 
 def due_questions(user_id: str, limit: int = 10, *, now: Optional[datetime] = None) -> list[str]:
@@ -189,4 +189,4 @@ def due_questions(user_id: str, limit: int = 10, *, now: Optional[datetime] = No
         cur.close()
         return [r[0] for r in rows]
     finally:
-        conn.close()
+        release_connection(conn)

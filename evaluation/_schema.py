@@ -11,7 +11,7 @@ from contextlib import contextmanager
 from pathlib import Path
 
 from config import EMBEDDING_DIMENSION
-from db.database import get_connection, use_schema
+from db.database import get_connection, release_connection, use_schema
 
 logger = logging.getLogger(__name__)
 
@@ -68,7 +68,7 @@ def ensure_eval_schema(schema: str) -> None:
         conn.commit()
         cur.close()
     finally:
-        conn.close()
+        release_connection(conn)
 
 
 def schema_is_populated(schema: str) -> bool:

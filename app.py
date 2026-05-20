@@ -1,7 +1,17 @@
 import os
 import html
+import json
+import threading
 from pathlib import Path
 import streamlit as st
+
+try:
+    # private streamlit-api die einen background-thread an den session-ctx koppelt
+    # damit zugriff auf st.session_state aus dem thread heraus funktioniert
+    from streamlit.runtime.scriptrunner import add_script_run_ctx, get_script_run_ctx
+except Exception:
+    add_script_run_ctx = None
+    get_script_run_ctx = None
 
 # secrets in os.environ laden bevor andere module geladen werden
 # lokal gibt es keine secrets.toml also ueberspringen
@@ -34,7 +44,7 @@ from ingestion.embedder import (
     reset_provider_caches,
     verify_openai_key,
 )
-from retrieval.pipeline import retrieve
+from retrieval.pipeline import retrieve, get_last_timings
 from generation.history import rewrite_question_with_history
 from generation.generator import (
     generate_answer,
@@ -46,12 +56,97 @@ from generation.generator import (
 )
 from generation.quiz import generate_quiz_question
 from streamlit_pdf_viewer import pdf_viewer
+from streamlit_local_storage import LocalStorage
 from config import DOCUMENTS_DIR
 
 
 # config-keys fuer den setup-wizard (in app_config-tabelle)
 SETUP_FLAG_KEY = "setup_completed"
 OPENAI_EMBED_KEY = "openai_embedding_key"
+
+
+def _prefetch_next_quiz(topic: str | None) -> None:
+    """startet einen background-thread der die naechste quiz-frage generiert
+    ergebnis landet in st.session_state.prefetched_quiz
+    bei klick auf neue frage spaeter sofort verfuegbar
+    """
+    if add_script_run_ctx is None or get_script_run_ctx is None:
+        return
+    ctx = get_script_run_ctx()
+    if ctx is None:
+        return
+
+    def worker():
+        try:
+            add_script_run_ctx(threading.current_thread(), ctx)
+        except Exception:
+            pass
+        try:
+            data, error = generate_quiz_question(topic)
+            st.session_state.prefetched_quiz = data
+            st.session_state.prefetched_quiz_error = error
+        except Exception:
+            # bei fehler einfach kein prefetch
+            # naechster klick faellt auf synchron zurueck
+            pass
+
+    t = threading.Thread(target=worker, daemon=True)
+    t.start()
+
+
+# ── chat-history clientseitig im browser-localstorage halten ──
+
+# pro mode ein eigener key
+_LS_CHAT_KEY = "kfz_chat_history"
+
+
+def _ls() -> LocalStorage:
+    """liefert die LocalStorage-instanz aus dem cache"""
+    if "_ls_instance" not in st.session_state:
+        st.session_state._ls_instance = LocalStorage()
+    return st.session_state._ls_instance
+
+
+def _chat_storage_key(mode: str | None) -> str:
+    """key pro mode damit chat und sparring getrennt gespeichert werden"""
+    return f"{_LS_CHAT_KEY}_{mode or 'none'}"
+
+
+def _load_chat_history(mode: str | None) -> list[dict] | None:
+    """liest die chat-history aus localStorage
+    returns None wenn nichts gespeichert oder beim ersten render noch nicht geladen
+    """
+    if not mode or mode == "Quiz":
+        return None
+    try:
+        raw = _ls().getItem(_chat_storage_key(mode))
+        if not raw:
+            return None
+        return json.loads(raw)
+    except Exception:
+        return None
+
+
+def _save_chat_history(mode: str | None, history: list[dict]) -> None:
+    """speichert die chat-history in localStorage
+    quellen werden mitgespeichert sodass die pdf-buttons nach reload klickbar bleiben
+    """
+    if not mode or mode == "Quiz":
+        return
+    try:
+        _ls().setItem(_chat_storage_key(mode), json.dumps(history))
+    except Exception:
+        pass
+
+
+def _clear_chat_history(mode: str | None) -> None:
+    """loescht den localStorage-eintrag fuer den gegebenen mode"""
+    if not mode or mode == "Quiz":
+        return
+    try:
+        _ls().deleteItem(_chat_storage_key(mode))
+    except Exception:
+        pass
 
 
 @st.dialog("📖 Quelle im PDF", width="large")
@@ -986,6 +1081,29 @@ if db_connected and not _setup_completed():
     _render_setup_wizard()
     st.stop()
 
+
+# ── chat-history aus localStorage wiederherstellen falls vorhanden ──
+# laeuft bei jedem render bis ein nicht-leeres ergebnis oder user-aktion
+# das streamlit-local-storage-component braucht ein bis zwei reruns
+# bis es den wert geliefert hat
+def _restore_chat_history_if_needed():
+    mode = st.session_state.get("mode")
+    if mode not in ("Chat", "Sparring"):
+        return
+    flag = f"_ls_restored_{mode}"
+    if st.session_state.get(flag):
+        return
+    if st.session_state.chat_history:
+        st.session_state[flag] = True
+        return
+    restored = _load_chat_history(mode)
+    if restored:
+        st.session_state.chat_history = restored
+        st.session_state[flag] = True
+
+
+_restore_chat_history_if_needed()
+
 # ── sidebar ──
 with st.sidebar:
     # branding-button klickbar zur startseite
@@ -996,6 +1114,13 @@ with st.sidebar:
         st.session_state.quiz_data = None
         st.session_state.quiz_answered = False
         st.session_state.quiz_score = {"correct": 0, "total": 0}
+        st.session_state.pop("prefetched_quiz", None)
+        st.session_state.pop("prefetched_quiz_error", None)
+        st.session_state.pop("prefetch_started_for", None)
+        # localStorage bleibt damit history beim modus-aktivieren wiederkommt
+        # nur die restore-flags clearen damit naechster mode-aufruf neu laedt
+        st.session_state.pop("_ls_restored_Chat", None)
+        st.session_state.pop("_ls_restored_Sparring", None)
         st.rerun()
 
     st.divider()
@@ -1019,14 +1144,30 @@ with st.sidebar:
         st.session_state.quiz_data = None
         st.session_state.quiz_answered = False
         st.session_state.quiz_score = {"correct": 0, "total": 0}
+        st.session_state.pop("prefetched_quiz", None)
+        st.session_state.pop("prefetched_quiz_error", None)
+        st.session_state.pop("prefetch_started_for", None)
+        # restore-flag des neuen mode loeschen
+        # damit chat-history aus localStorage wiederhergestellt wird falls vorhanden
+        st.session_state.pop(f"_ls_restored_{new_mode}", None)
         st.rerun()
 
     if st.button("＋ Neuer Chat", use_container_width=True):
+        # aktuellen mode merken bevor cleanup
+        _current_mode = st.session_state.mode
         st.session_state.chat_history = []
         st.session_state.session_id = create_chat_session()
         st.session_state.quiz_data = None
         st.session_state.quiz_answered = False
         st.session_state.quiz_score = {"correct": 0, "total": 0}
+        st.session_state.pop("prefetched_quiz", None)
+        st.session_state.pop("prefetched_quiz_error", None)
+        st.session_state.pop("prefetch_started_for", None)
+        # localStorage des aktuellen mode loeschen
+        # restore-flag setzen damit nicht direkt wieder geladen wird
+        _clear_chat_history(_current_mode)
+        if _current_mode in ("Chat", "Sparring"):
+            st.session_state[f"_ls_restored_{_current_mode}"] = True
         st.rerun()
 
     st.divider()
@@ -1252,6 +1393,30 @@ with st.sidebar:
 
     st.divider()
 
+    # ── debug: latenzen der letzten anfrage ──
+    # nur sichtbar wenn schon eine anfrage durchgelaufen ist
+    _last_t = st.session_state.get("last_retrieval_timings")
+    if _last_t is not None:
+        with st.expander("⏱ Letzte Anfrage", expanded=False):
+            st.caption(
+                f"Gesamt: <b>{_last_t.total_ms:.0f} ms</b>"
+                f"&nbsp;·&nbsp; {_last_t.num_queries} Query-Variante(n)"
+                f"&nbsp;·&nbsp; {_last_t.num_fused} Treffer nach RRF"
+                + ("&nbsp;·&nbsp; parallel" if _last_t.parallel else ""),
+                unsafe_allow_html=True,
+            )
+            st.markdown(
+                f"""
+                <div style='font-size:0.78rem;color:#94a3b8;line-height:1.6'>
+                Multi-Query: <b>{_last_t.multi_query_ms:.0f} ms</b><br/>
+                Hybrid-Search: <b>{_last_t.search_ms:.0f} ms</b><br/>
+                RRF: <b>{_last_t.fusion_ms:.0f} ms</b><br/>
+                Reranker: <b>{_last_t.rerank_ms:.0f} ms</b>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+
     # ── erweitert: wissensbasis zuruecksetzen ──
     # noetig bei key-wechsel oder wenn man komplett neu anfangen will
     # zwei-klick-confirm gegen versehentliches ausloesen
@@ -1284,6 +1449,9 @@ with st.sidebar:
                 ):
                     reset_knowledge_base()
                     reset_provider_caches()
+                    # localStorage fuer beide chat-modi leeren
+                    _clear_chat_history("Chat")
+                    _clear_chat_history("Sparring")
                     # session-state leeren damit der wizard frisch startet
                     for k in (
                         "confirm_reset", "wizard_step",
@@ -1291,6 +1459,9 @@ with st.sidebar:
                         "chat_history", "session_id",
                         "quiz_data", "quiz_answered", "quiz_score",
                         "mode", "apikey_expander_initial_done",
+                        "prefetched_quiz", "prefetched_quiz_error",
+                        "prefetch_started_for", "last_retrieval_timings",
+                        "_ls_restored_Chat", "_ls_restored_Sparring",
                     ):
                         st.session_state.pop(k, None)
                     st.rerun()
@@ -1413,6 +1584,10 @@ elif st.session_state.mode == "Chat":
                         prompt
                     )
                     context_chunks = retrieve(standalone_query)
+                    # latenzen fuer den debug-expander in der sidebar persistieren
+                    _t = get_last_timings()
+                    if _t is not None:
+                        st.session_state.last_retrieval_timings = _t
 
                 if not context_chunks:
                     answer = (
@@ -1443,6 +1618,7 @@ elif st.session_state.mode == "Chat":
         if st.session_state.session_id:
             save_chat_message(st.session_state.session_id, "user", prompt)
             save_chat_message(st.session_state.session_id, "assistant", answer)
+        _save_chat_history(st.session_state.mode, st.session_state.chat_history)
         st.rerun()
 
 # ── quiz-modus ──
@@ -1506,18 +1682,31 @@ elif st.session_state.mode == "Quiz":
     if generate_btn or topic_submitted:
         if topic_submitted:
             st.session_state.last_quiz_topic = quiz_topic
-        with st.spinner("Generiere Frage..."):
-            quiz_data, quiz_error = generate_quiz_question(
-                quiz_topic if quiz_topic else None
-            )
-            if quiz_data:
-                st.session_state.quiz_data = quiz_data
-                st.session_state.quiz_answered = False
-            else:
-                st.error(
-                    quiz_error
-                    or "Konnte keine Frage generieren. Bitte erneut versuchen."
+
+        # erst pruefen ob im hintergrund schon eine frage vorgeneriert wurde
+        # passt sie zum aktuellen thema dann sofort nutzen
+        prefetched = None
+        if not topic_submitted:
+            prefetched = st.session_state.pop("prefetched_quiz", None)
+            st.session_state.pop("prefetched_quiz_error", None)
+        st.session_state.pop("prefetch_started_for", None)
+
+        if prefetched is not None:
+            st.session_state.quiz_data = prefetched
+            st.session_state.quiz_answered = False
+        else:
+            with st.spinner("Generiere Frage..."):
+                quiz_data, quiz_error = generate_quiz_question(
+                    quiz_topic if quiz_topic else None
                 )
+                if quiz_data:
+                    st.session_state.quiz_data = quiz_data
+                    st.session_state.quiz_answered = False
+                else:
+                    st.error(
+                        quiz_error
+                        or "Konnte keine Frage generieren. Bitte erneut versuchen."
+                    )
 
     # frage anzeigen
     if st.session_state.quiz_data:
@@ -1597,6 +1786,17 @@ elif st.session_state.mode == "Quiz":
                                 src["filename"],
                             )
 
+            # naechste frage im hintergrund vorbereiten
+            # nur einmal pro answered-zustand starten (sonst x parallele threads)
+            _topic_now = quiz_topic if quiz_topic else None
+            _started_for = st.session_state.get("prefetch_started_for")
+            if (
+                "prefetched_quiz" not in st.session_state
+                and _started_for != _topic_now
+            ):
+                st.session_state.prefetch_started_for = _topic_now
+                _prefetch_next_quiz(_topic_now)
+
 # ── sparring-modus (sokratisch) ──
 elif st.session_state.mode == "Sparring":
 
@@ -1661,6 +1861,9 @@ elif st.session_state.mode == "Sparring":
                         prompt
                     )
                     context_chunks = retrieve(standalone_query)
+                    _t = get_last_timings()
+                    if _t is not None:
+                        st.session_state.last_retrieval_timings = _t
 
                 if not context_chunks:
                     answer = (
@@ -1688,4 +1891,5 @@ elif st.session_state.mode == "Sparring":
         if st.session_state.session_id:
             save_chat_message(st.session_state.session_id, "user", prompt)
             save_chat_message(st.session_state.session_id, "assistant", answer)
+        _save_chat_history(st.session_state.mode, st.session_state.chat_history)
         st.rerun()
