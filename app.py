@@ -160,20 +160,113 @@ def _pop_prefetched_quiz(session_id: int, topic: str | None, *, wait_ms: int = 0
         time.sleep(0.05)
 
 
-# ── chats clientseitig im browser-localstorage halten ──
+# ── chats und api-credentials clientseitig im browser-localstorage halten ──
 # pro mode (Chat/Sparring) eine liste von vergangenen chats
 # jeder chat hat id title messages
 # die letzten 20 werden behalten
+# zusaetzlich werden anbieter und api-key persistiert damit sie nach reload
+# nicht erneut eingegeben werden muessen
 
 _LS_CHATS_KEY = "kfz_chats"
 _LS_MAX_CHATS = 20
+# anbieter und schluessel zusammen in einer entry damit nur ein setItem
+# pro speichervorgang noetig ist - sonst kollidiert das component-batching
+_LS_API_CREDENTIALS_KEY = "kfz_api_credentials"
 
 
-def _ls() -> LocalStorage:
-    """liefert die LocalStorage-instanz aus dem cache"""
-    if "_ls_instance" not in st.session_state:
-        st.session_state._ls_instance = LocalStorage()
-    return st.session_state._ls_instance
+# die LocalStorage-klasse aus dem package hat zwei probleme
+# 1) blockierender time.sleep loop in __init__ der bei aktueller streamlit-version deadlocken kann
+# 2) das __init__ versucht st.session_state["storage_init"] zu schreiben was streamlit
+#    fuer widget-gebundene keys verbietet
+# loesung: wir benutzen das _st_local_storage-component direkt
+from streamlit_local_storage import _st_local_storage as _ls_component
+
+
+def _ls_mount() -> None:
+    """mountet das iframe in jedem render damit es persistent bleibt
+    streamlit unmountet components die nicht jeden render aufgerufen werden
+    keine blockierende warteschleife - die daten landen via session_state.storage_init
+    """
+    try:
+        _ls_component(method="getAll", key="storage_init", default={})
+    except Exception:
+        pass
+
+
+def _ls_call_setitem(item_key: str, item_value: str) -> bool:
+    """schreibt direkt via component aufruf in localstorage
+    component-key pro item damit verschiedene setItems nicht ueber einander schreiben
+    """
+    try:
+        _ls_component(
+            method="setItem",
+            itemKey=item_key,
+            itemValue=item_value,
+            key=f"_ls_set_{item_key}",
+        )
+        return True
+    except Exception:
+        return False
+
+
+def _ls_call_deleteitem(item_key: str) -> bool:
+    """loescht direkt via component aufruf in localstorage"""
+    try:
+        _ls_component(
+            method="deleteItem",
+            itemKey=item_key,
+            key=f"_ls_del_{item_key}",
+        )
+        return True
+    except Exception:
+        return False
+
+
+def _ls_storage() -> dict:
+    """liefert das aktuelle storage-dict aus session_state das vom iframe
+    nach jedem schreib- oder lesezugriff aktualisiert wird
+    """
+    data = st.session_state.get("storage_init")
+    if isinstance(data, dict):
+        return data
+    return {}
+
+
+def _ls_get(key: str) -> str | None:
+    """einzelnen wert lesen leere strings zaehlen als nicht gesetzt
+    voraussetzung: _ls_mount wurde bereits in diesem render aufgerufen
+    das streamlit-local-storage-component wickelt setitem-werte als
+    {key: value} ein - wir wickeln hier wieder aus
+    """
+    val = _ls_storage().get(key)
+    if val is None or val == "":
+        return None
+    if isinstance(val, str):
+        # component-wrapping kompensieren: {"<key>": "<inner>"} → "<inner>"
+        try:
+            parsed = json.loads(val)
+            if isinstance(parsed, dict) and len(parsed) == 1 and key in parsed:
+                inner = parsed[key]
+                return inner if isinstance(inner, str) else json.dumps(inner)
+        except Exception:
+            pass
+        return val
+    return json.dumps(val)
+
+
+def _ls_set(key: str, value: str) -> None:
+    """wert in localstorage schreiben
+    direkter component-aufruf statt LocalStorage-wrapper damit kein deadlock
+    der frontend wickelt den wert als {key: value} ein das wickelt _ls_get
+    beim lesen wieder aus - storage_init ist widget-bound darum kein direktes
+    schreiben in den cache, naechster render liest frisch aus iframe
+    """
+    _ls_call_setitem(key, value)
+
+
+def _ls_delete(key: str) -> None:
+    """eintrag aus localstorage entfernen"""
+    _ls_call_deleteitem(key)
 
 
 def _chats_storage_key(mode: str | None) -> str:
@@ -192,10 +285,10 @@ def _load_chats(mode: str | None) -> list[dict]:
     """
     if not mode or mode == "Quiz":
         return []
+    raw = _ls_get(_chats_storage_key(mode))
+    if not raw:
+        return []
     try:
-        raw = _ls().getItem(_chats_storage_key(mode))
-        if not raw:
-            return []
         data = json.loads(raw)
         return data if isinstance(data, list) else []
     except Exception:
@@ -225,7 +318,7 @@ def _save_chat(mode: str | None, chat_id: str, messages: list[dict]) -> None:
             "messages": messages,
         })
         chats = chats[:_LS_MAX_CHATS]
-        _ls().setItem(_chats_storage_key(mode), json.dumps(chats))
+        _ls_set(_chats_storage_key(mode), json.dumps(chats))
     except Exception:
         pass
 
@@ -237,7 +330,7 @@ def _delete_chat(mode: str | None, chat_id: str) -> None:
     try:
         chats = _load_chats(mode)
         chats = [c for c in chats if c.get("id") != chat_id]
-        _ls().setItem(_chats_storage_key(mode), json.dumps(chats))
+        _ls_set(_chats_storage_key(mode), json.dumps(chats))
     except Exception:
         pass
 
@@ -246,10 +339,53 @@ def _clear_chats(mode: str | None) -> None:
     """loescht alle chats fuer den mode"""
     if not mode or mode == "Quiz":
         return
+    _ls_delete(_chats_storage_key(mode))
+
+
+def _save_api_credentials(provider: str, api_key: str) -> None:
+    """sichert anbieter und schluessel als ein einzelnes json-blob im localstorage
+    damit sie reload-fest sind - eine einzelne setItem-runde reicht
+    """
+    payload = json.dumps({
+        "provider": provider or "",
+        "api_key": api_key or "",
+    })
+    _ls_set(_LS_API_CREDENTIALS_KEY, payload)
+
+
+def _clear_api_credentials() -> None:
+    """entfernt anbieter und schluessel aus dem localstorage
+    wird beim wissensbasis-reset aufgerufen damit der wizard frisch startet
+    """
+    _ls_delete(_LS_API_CREDENTIALS_KEY)
+
+
+def _restore_api_credentials_if_needed() -> None:
+    """laedt anbieter und schluessel einmalig aus localstorage in session_state
+    laeuft jeden render bis daten da sind oder der user selbst etwas gesetzt hat
+    """
+    if st.session_state.get("_ls_restored_api_credentials"):
+        return
+    if st.session_state.get("user_api_key"):
+        # user hat in diesem render selbst was gesetzt nichts ueberschreiben
+        st.session_state["_ls_restored_api_credentials"] = True
+        return
+    raw = _ls_get(_LS_API_CREDENTIALS_KEY)
+    if raw is None:
+        # iframe noch nicht zurueck oder wirklich nichts gespeichert
+        # flag NICHT setzen damit wir es im naechsten render nochmal probieren
+        return
     try:
-        _ls().deleteItem(_chats_storage_key(mode))
+        data = json.loads(raw)
     except Exception:
-        pass
+        data = None
+    if isinstance(data, dict):
+        provider = data.get("provider") or ""
+        api_key = data.get("api_key") or ""
+        if provider and api_key:
+            st.session_state["user_provider"] = provider
+            st.session_state["user_api_key"] = api_key
+    st.session_state["_ls_restored_api_credentials"] = True
 
 
 @st.dialog("📖 Quelle im PDF", width="large")
@@ -621,8 +757,10 @@ st.markdown("""
     }
 
     /* ── Sidebar Branding-Button ── */
-    /* ── Branding-Home-Button (erstes Element in Sidebar) ── */
-    [data-testid="stSidebarUserContent"] [data-testid="stVerticalBlock"] > [data-testid="stElementContainer"]:nth-child(1) button {
+    /* key-basierter selektor damit nur der echte brand-button matcht
+       nth-child(1) hat vorher versehentlich auch andere erste-kinder von
+       vertical-blocks gegriffen z.b. die buttons in der vergangene-chats-liste */
+    section[data-testid="stSidebar"] .st-key-brand_home button {
         background: transparent !important;
         border: 1px solid rgba(255,255,255,0.08) !important;
         border-radius: 14px !important;
@@ -634,18 +772,18 @@ st.markdown("""
         color: #e2e8f0 !important;
         letter-spacing: 0.02em !important;
     }
-    [data-testid="stSidebarUserContent"] [data-testid="stVerticalBlock"] > [data-testid="stElementContainer"]:nth-child(1) button:hover {
+    section[data-testid="stSidebar"] .st-key-brand_home button:hover {
         background: rgba(99, 102, 241, 0.08) !important;
         border-color: rgba(99, 102, 241, 0.25) !important;
         color: #e2e8f0 !important;
     }
-    [data-testid="stSidebarUserContent"] [data-testid="stVerticalBlock"] > [data-testid="stElementContainer"]:nth-child(1) button p {
+    section[data-testid="stSidebar"] .st-key-brand_home button p {
         white-space: pre-line !important;
         line-height: 1.4 !important;
         font-size: 1.5rem !important;
         font-weight: 700 !important;
     }
-    [data-testid="stSidebarUserContent"] [data-testid="stVerticalBlock"] > [data-testid="stElementContainer"]:nth-child(1) button p::first-line {
+    section[data-testid="stSidebar"] .st-key-brand_home button p::first-line {
         font-size: 2.5rem !important;
         line-height: 2.2 !important;
     }
@@ -1055,39 +1193,37 @@ st.markdown("""
         overflow: hidden !important;
     }
 
-    /* ── Sidebar-Expander: kompakte Buttons (Schriftgröße passend) ── */
-    section[data-testid="stSidebar"] [data-testid="stExpander"] .stButton > button,
-    section[data-testid="stSidebar"] [data-testid="stExpander"] [data-testid="stColumn"] button {
-        font-size: 0.82rem !important;
-        font-weight: 500 !important;
-        padding: 0.4rem 0.6rem !important;
-        min-height: 0 !important;
-        height: auto !important;
-        line-height: 1.3 !important;
-        white-space: nowrap !important;
+    /* ── chat-liste im sidebar-expander: optik wie + neuer chat ── */
+    /* title-button links: text linksbuendig damit lange titel sauber kuerzen
+       schriftgroesse und gewicht passend zu + neuer chat */
+    section[data-testid="stSidebar"] [data-testid="stExpander"] [data-testid="stColumn"]:first-child button {
         text-align: left !important;
+        justify-content: flex-start !important;
+    }
+    section[data-testid="stSidebar"] [data-testid="stExpander"] [data-testid="stColumn"]:first-child button p {
+        font-size: 0.85rem !important;
+        font-weight: 500 !important;
+        line-height: 1.4 !important;
+        margin: 0 !important;
+        text-align: left !important;
+        width: 100% !important;
+        white-space: nowrap !important;
         overflow: hidden !important;
         text-overflow: ellipsis !important;
     }
-    section[data-testid="stSidebar"] [data-testid="stExpander"] .stButton > button p,
-    section[data-testid="stSidebar"] [data-testid="stExpander"] .stButton > button div,
-    section[data-testid="stSidebar"] [data-testid="stExpander"] [data-testid="stColumn"] button p,
-    section[data-testid="stSidebar"] [data-testid="stExpander"] [data-testid="stColumn"] button div {
-        font-size: 0.82rem !important;
-        font-weight: 500 !important;
+    /* x-button rechts: identisch zu den x-buttons in der wissensbasis-liste
+       streamlit-defaults erben (16px schrift gewicht 400) farbe slate-200 */
+    section[data-testid="stSidebar"] [data-testid="stExpander"] [data-testid="stColumn"]:last-child button p {
+        font-size: 1rem !important;
+        font-weight: 400 !important;
+        color: #e2e8f0 !important;
         margin: 0 !important;
-        line-height: 1.3 !important;
-        text-align: left !important;
-    }
-    /* X-Buttons im chat-liste-expander zentriert und kleiner */
-    section[data-testid="stSidebar"] [data-testid="stExpander"] [data-testid="stColumn"]:last-child button {
-        text-align: center !important;
-        padding: 0.4rem 0.3rem !important;
-        color: #94a3b8 !important;
     }
     section[data-testid="stSidebar"] [data-testid="stExpander"] [data-testid="stColumn"]:last-child button:hover {
-        color: #f87171 !important;
         border-color: rgba(239, 68, 68, 0.5) !important;
+    }
+    section[data-testid="stSidebar"] [data-testid="stExpander"] [data-testid="stColumn"]:last-child button:hover p {
+        color: #f87171 !important;
     }
 
     /* ── Source chunk in expander ── */
@@ -1138,6 +1274,10 @@ if not st.session_state.authenticated:
             else:
                 st.error("Falsches Passwort")
     st.stop()
+
+# localstorage-iframe in jedem render mounten damit es persistent bleibt
+# erst nach dem auth-gate damit der wizard-fluss nicht beeinflusst wird
+_ls_mount()
 
 # ── prototyp-hinweis ──
 # embeddings laufen immer ueber openai
@@ -1200,6 +1340,10 @@ if "user_provider" not in st.session_state:
     st.session_state.user_provider = "openai"
 if "current_chat_id" not in st.session_state:
     st.session_state.current_chat_id = None
+
+# anbieter und schluessel aus localstorage zurueckholen falls vorhanden
+# laeuft jeden render bis das iframe-component daten geliefert hat
+_restore_api_credentials_if_needed()
 
 # ── first-run-wizard ──
 # wenn die erstkonfig noch nicht durch ist uebernimmt der wizard
@@ -1458,6 +1602,11 @@ with st.sidebar:
                 st.session_state.user_api_key = ""
                 st.session_state.user_provider = "openai"  # neutraler Default
                 st.session_state.apikey_just_applied = True
+                # localstorage clearen damit nach reload auch ollama-default greift
+                _clear_api_credentials()
+                # kurze pause damit das iframe-component die postmessage
+                # noch abarbeiten kann bevor der rerun es unmountet
+                time.sleep(0.5)
                 st.rerun()
             else:
                 stripped = key_input.strip()
@@ -1465,6 +1614,11 @@ with st.sidebar:
                     st.session_state.user_api_key = stripped
                     st.session_state.user_provider = provider_choice
                     st.session_state.apikey_just_applied = True
+                    # anbieter und schluessel reload-fest im localstorage ablegen
+                    _save_api_credentials(provider_choice, stripped)
+                    # kurze pause damit das iframe-component die postmessage
+                    # noch abarbeiten kann bevor der rerun es unmountet
+                    time.sleep(0.5)
                     st.rerun()
                 else:
                     # bei validierungsfehler KEIN st.rerun()
@@ -1621,6 +1775,9 @@ with st.sidebar:
                     # alle chats fuer beide modi loeschen
                     _clear_chats("Chat")
                     _clear_chats("Sparring")
+                    # auch anbieter und schluessel im localstorage entfernen
+                    # damit der wizard von vorne startet
+                    _clear_api_credentials()
                     # session-state leeren damit der wizard frisch startet
                     for k in (
                         "confirm_reset", "wizard_step",
@@ -1630,6 +1787,7 @@ with st.sidebar:
                         "mode", "apikey_expander_initial_done",
                         "prefetch_started_for", "last_retrieval_timings",
                         "_ls_restored_Chat", "_ls_restored_Sparring",
+                        "_ls_restored_api_credentials",
                     ):
                         st.session_state.pop(k, None)
                     st.rerun()
