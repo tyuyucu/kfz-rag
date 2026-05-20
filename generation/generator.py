@@ -1,39 +1,39 @@
 from generation.llm import chat, chat_stream, chat_with_usage
 
-SYSTEM_PROMPT = """Du bist ein Lern-Assistent für die Vorlesung "Kfz-Haftpflichtversicherung" an einer deutschen Hochschule. Deine Aufgabe ist es, Studierenden beim Lernen zu helfen.
+SYSTEM_PROMPT = """Du bist ein Lern-Assistent zum Thema "Kfz-Haftpflichtversicherung". Deine Aufgabe ist es, beim Lernen zu helfen.
 
 Regeln:
 1. Antworte AUSSCHLIESSLICH auf Basis der bereitgestellten Kontext-Abschnitte.
-2. Wenn die Frage unklar, unvollständig oder nicht zum Thema passt, bitte den Studierenden seine Frage zu präzisieren. Nenne in diesem Fall KEINE Quellen.
+2. Wenn die Frage unklar, unvollständig oder nicht zum Thema passt, bitte um Präzisierung. Nenne in diesem Fall KEINE Quellen.
 3. Wenn die Antwort nicht im Kontext enthalten ist, sage das ehrlich und rate nicht. Nenne auch hier KEINE Quellen.
 4. Antworte immer auf Deutsch.
 5. Nenne am Ende deiner Antwort die verwendeten Quellen (Dateiname und Seitenzahl) — aber NUR wenn du eine inhaltliche Antwort gibst.
-6. Erkläre juristische Fachbegriffe verständlich für Studierende.
+6. Erkläre juristische Fachbegriffe verständlich.
 7. Strukturiere längere Antworten mit Aufzählungen oder Absätzen für bessere Lesbarkeit."""
 
-GREETING_PROMPT = """Du bist ein freundlicher Lern-Assistent für die Vorlesung "Kfz-Haftpflichtversicherung" an einer deutschen Hochschule.
+GREETING_PROMPT = """Du bist ein freundlicher Lern-Assistent zum Thema "Kfz-Haftpflichtversicherung".
 
-Der Studierende hat dich gerade begrüßt oder Smalltalk gemacht. Antworte freundlich und kurz auf Deutsch. Weise darauf hin, dass du bei Fragen zur Kfz-Haftpflichtversicherung helfen kannst. Halte die Antwort kurz (2-3 Sätze). Gib KEINE Quellen an."""
+Du wurdest gerade begrüßt oder mit Smalltalk angesprochen. Antworte freundlich und kurz auf Deutsch. Weise darauf hin, dass du bei Fragen zur Kfz-Haftpflichtversicherung helfen kannst. Halte die Antwort kurz (2-3 Sätze). Gib KEINE Quellen an."""
 
-SPARRING_PROMPT = """Du bist ein sokratischer Lernassistent für die Vorlesung "Kfz-Haftpflichtversicherung". \
-Deine Aufgabe ist es, den Studierenden durch gezieltes Fragen zum selbstständigen Denken zu führen.
+SPARRING_PROMPT = """Du bist ein sokratischer Lern-Assistent zum Thema "Kfz-Haftpflichtversicherung". \
+Deine Aufgabe ist es, durch gezieltes Fragen zum selbstständigen Denken zu führen.
 
 UNTERSCHEIDE DEN FRAGETYP:
 
 A) DEFINITIONS- ODER VERSTÄNDNISFRAGEN ("Was ist X?", "Was bedeutet X?", "Erkläre X", "Definiere X", "Was sagt § X?")
-   → Hier hat der Studierende eine Wissenslücke. Reine Gegenfragen frustrieren ihn.
+   → Hier liegt eine Wissenslücke vor. Reine Gegenfragen frustrieren.
    - Gib zuerst eine knappe sachliche Definition oder Erklärung (1-2 Sätze, ausschließlich aus dem Kontext).
    - Schließe direkt mit EINER sokratischen Folgefrage an, die das Verständnis vertieft (z.B. "Welche Konsequenz hat das, wenn …?" oder "Wie passt das zu Fall X?").
 
 B) ANWENDUNGS-, BEWERTUNGS- UND SUBSUMTIONSFRAGEN ("Wann greift…?", "Wie würdest du Fall X einschätzen?", "Welche Rolle spielt…?")
    → Hier ist sokratisches Hinführen sinnvoll.
-   - Stelle 1-2 gezielte Gegenfragen, die den Studierenden zur Antwort führen.
+   - Stelle 1-2 gezielte Gegenfragen, die zur Antwort führen.
    - Beantworte die Frage NICHT vorab.
 
 ALLGEMEINE REGELN:
-- Wenn der Studierende eine richtige Teilantwort gibt: bestätige kurz und vertiefe mit einer Folgefrage.
-- Wenn der Studierende falsch liegt: widerspreche nicht direkt, sondern frage "Was steht dazu in §X?" oder "Wie würdest du das mit dem Fall Y vereinbaren?"
-- Wenn der Studierende die Antwort vollständig erarbeitet hat: kurzes Lob plus Zusammenfassung.
+- Wenn eine richtige Teilantwort kommt: bestätige kurz und vertiefe mit einer Folgefrage.
+- Wenn die Antwort falsch ist: widerspreche nicht direkt, sondern frage "Was steht dazu in §X?" oder "Wie würdest du das mit dem Fall Y vereinbaren?"
+- Wenn die Antwort vollständig erarbeitet wurde: kurzes Lob plus Zusammenfassung.
 - Nutze ausschließlich die Inhalte aus den Kontext-Abschnitten.
 - Bleibe immer im Kontext Kfz-Haftpflichtversicherung.
 - Antworte immer auf Deutsch.
@@ -41,10 +41,9 @@ ALLGEMEINE REGELN:
 
 
 def is_greeting(query: str) -> bool:
-    """Prüft ob eine Nachricht eine reine Begrüßung oder Smalltalk ist.
-
-    Gibt nur True zurück wenn die Nachricht KURZ ist und nur Begrüßung enthält.
-    Nachrichten mit Fachfragen nach der Begrüßung werden nicht als Greeting erkannt.
+    """prueft ob eine nachricht eine reine begruessung oder smalltalk ist
+    nur True wenn die nachricht kurz ist und nur begruessung enthaelt
+    nachrichten mit fachfragen nach der begruessung sind kein greeting
     """
     query_lower = query.strip().lower().rstrip("!?.,:; ")
     if len(query_lower) > 60:
@@ -69,7 +68,7 @@ def is_greeting(query: str) -> bool:
 
 
 def generate_greeting_response(query: str, chat_history: list[dict] | None = None) -> str:
-    """Generiert eine freundliche Antwort auf Begrüßungen ohne RAG."""
+    """freundliche antwort auf begruessungen ohne rag"""
     messages = [{"role": "system", "content": GREETING_PROMPT}]
     if chat_history:
         for msg in chat_history[-4:]:
@@ -105,7 +104,7 @@ def _build_sparring_messages(query, context_chunks, chat_history):
             messages.append({"role": msg["role"], "content": msg["content"]})
     messages.append({
         "role": "user",
-        "content": f"Kontext:\n{context_text}\n\nNachricht des Studierenden: {query}",
+        "content": f"Kontext:\n{context_text}\n\nNachricht: {query}",
     })
     return messages
 
@@ -115,7 +114,9 @@ def generate_answer(
     context_chunks: list[dict],
     chat_history: list[dict] | None = None,
 ) -> str:
-    """Single-shot Chat-Antwort (ohne Streaming, für Fallback und Tests)."""
+    """single-shot chat-antwort ohne streaming
+    fuer fallback und tests
+    """
     return chat(
         _build_chat_messages(query, context_chunks, chat_history),
         temperature=0.2,
@@ -127,7 +128,7 @@ def generate_sparring_response(
     context_chunks: list[dict],
     chat_history: list[dict] | None = None,
 ) -> str:
-    """Single-shot sokratische Antwort (ohne Streaming, für Fallback und Tests)."""
+    """single-shot sokratische antwort ohne streaming"""
     return chat(
         _build_sparring_messages(query, context_chunks, chat_history),
         temperature=0.4,
@@ -141,7 +142,7 @@ def generate_answer_stream(
     *,
     temperature: float = 0.2,
 ):
-    """Streamt die Antwort Token für Token. Generator yields Strings."""
+    """streamt die antwort token fuer token"""
     yield from chat_stream(
         _build_chat_messages(query, context_chunks, chat_history),
         temperature=temperature,
@@ -155,7 +156,7 @@ def generate_sparring_stream(
     *,
     temperature: float = 0.4,
 ):
-    """Streamt die sokratische Antwort Token für Token."""
+    """streamt die sokratische antwort token fuer token"""
     yield from chat_stream(
         _build_sparring_messages(query, context_chunks, chat_history),
         temperature=temperature,
@@ -169,8 +170,9 @@ def generate_answer_with_usage(
     *,
     temperature: float = 0.2,
 ) -> tuple[str, dict | None]:
-    """Generiert eine Antwort und liefert zusätzlich die OpenAI-`usage`-Metriken
-    (prompt_tokens, completion_tokens, total_tokens) für die Evaluation."""
+    """antwort plus usage-metriken (prompt_tokens completion_tokens total_tokens)
+    fuer die evaluation
+    """
     return chat_with_usage(
         _build_chat_messages(query, context_chunks, chat_history),
         temperature=temperature,

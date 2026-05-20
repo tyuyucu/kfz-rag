@@ -3,10 +3,8 @@ from generation.llm import chat
 
 
 def generate_query_variants(original_query: str) -> list[str]:
-    """Generiert mehrere Varianten einer Suchanfrage mit dem LLM.
-
-    Dies verbessert den Recall, da verschiedene Formulierungen
-    unterschiedliche relevante Chunks finden können.
+    """llm generiert mehrere varianten der suchanfrage
+    verbessert recall durch unterschiedliche formulierungen
     """
     text = chat(
         [

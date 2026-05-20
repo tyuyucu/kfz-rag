@@ -17,19 +17,14 @@ def retrieve(
     top_k: int | None = None,
     hybrid_top_k: int | None = None,
 ) -> list[dict]:
-    """Vollständige Retrieval-Pipeline mit konfigurierbaren Stufen.
+    """vollstaendige retrieval-pipeline mit konfigurierbaren stufen
+    default: multi-query -> hybrid-search -> rrf -> reranker -> top-k
 
-    Standardverhalten: Multi-Query → Hybrid-Search → RRF →
-    Cross-Encoder-Reranker → Top-k.
-
-    Parameter:
-        query: Nutzerfrage.
-        use_multi_query: LLM-Query-Varianten verwenden. Bei False nur die
-            Originalfrage.
-        use_hybrid: Neben semantischer auch Volltext-Suche per RRF fusionieren.
-        use_reranker: Cross-Encoder auf RERANK_CANDIDATE_POOL anwenden.
-        top_k: Finale Anzahl Chunks (Default: RERANK_TOP_K).
-        hybrid_top_k: Kandidaten je Teilsuche (Default: HYBRID_SEARCH_TOP_K).
+    use_multi_query: llm-query-varianten verwenden
+    use_hybrid: semantik plus volltext per rrf fusionieren
+    use_reranker: cross-encoder auf RERANK_CANDIDATE_POOL anwenden
+    top_k: finale anzahl chunks (default RERANK_TOP_K)
+    hybrid_top_k: kandidaten je teilsuche (default HYBRID_SEARCH_TOP_K)
     """
     top_k = top_k if top_k is not None else RERANK_TOP_K
     hybrid_top_k = hybrid_top_k if hybrid_top_k is not None else HYBRID_SEARCH_TOP_K

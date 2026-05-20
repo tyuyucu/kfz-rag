@@ -12,10 +12,8 @@ def get_reranker() -> CrossEncoder:
 
 
 def rerank(query: str, results: list[dict], top_k: int = RERANK_TOP_K) -> list[dict]:
-    """Bewertet die Ergebnisse mit einem Cross-Encoder neu.
-
-    Der Cross-Encoder berechnet die Relevanz von (Query, Passage)-Paaren
-    präziser als die initiale Vektorsuche.
+    """rerankt die ergebnisse mit dem cross-encoder
+    relevanz von (query passage)-paaren praeziser als die initiale vektorsuche
     """
     if not results:
         return []

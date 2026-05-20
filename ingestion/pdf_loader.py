@@ -3,9 +3,8 @@ import hashlib
 
 
 def extract_text_from_pdf(filepath: str) -> list[dict]:
-    """Extrahiert Text seitenweise aus einer PDF-Datei.
-
-    Returns: Liste von dicts mit keys: page_number, text
+    """extrahiert text seitenweise aus einer pdf
+    returns: liste von dicts mit page_number und text
     """
     doc = fitz.open(filepath)
     pages = []
@@ -31,7 +30,7 @@ def get_page_count(filepath: str) -> int:
 
 
 def compute_file_hash(filepath: str) -> str:
-    """Berechnet SHA-256 Hash einer Datei für Änderungserkennung."""
+    """sha-256 hash einer datei fuer aenderungserkennung"""
     sha256 = hashlib.sha256()
     with open(filepath, "rb") as f:
         for block in iter(lambda: f.read(8192), b""):

@@ -5,10 +5,9 @@ def rewrite_question_with_history(
     chat_history: list[dict],
     current_question: str,
 ) -> str:
-    """Formuliert die aktuelle Frage unter Berücksichtigung der Chat-History um.
-
-    Bei Folgefragen wie "Was bedeutet das genau?" wird der Kontext
-    aus der History einbezogen, um eine eigenständige Suchanfrage zu erstellen.
+    """formuliert die aktuelle frage mit der chat-history um
+    bei folgefragen wie "was bedeutet das genau" wird der kontext
+    aus der history einbezogen um eine eigenstaendige query zu bauen
     """
     if not chat_history:
         return current_question

@@ -4,13 +4,9 @@ from db.database import get_connection
 
 
 def insert_chunks(document_id: int, chunks: list[dict]) -> None:
-    """Fügt Chunks mit Embeddings in die Datenbank ein.
-
-    Verwendet `psycopg2.extras.execute_values` für einen einzigen
-    Bulk-INSERT statt einer Schleife aus Einzel-Inserts. Das spart bei
-    ~400–1000 Chunks pro Dokument eine Größenordnung an Roundtrips und
-    damit auch Wall-Clock-Zeit (Benchmark siehe
-    `docs/performance_bulk_insert.md`).
+    """fuegt chunks mit embeddings in die db ein
+    nutzt execute_values fuer einen einzigen bulk-insert
+    statt schleifen-inserts also viel weniger roundtrips
     """
     if not chunks:
         return
@@ -45,7 +41,7 @@ def insert_chunks(document_id: int, chunks: list[dict]) -> None:
 
 
 def semantic_search(query_embedding: list[float], top_k: int = 20) -> list[dict]:
-    """Semantische Suche via Cosine Similarity."""
+    """semantische suche via cosine similarity"""
     conn = get_connection()
     try:
         cur = conn.cursor()
@@ -73,7 +69,7 @@ def semantic_search(query_embedding: list[float], top_k: int = 20) -> list[dict]
 
 
 def fulltext_search(query: str, top_k: int = 20) -> list[dict]:
-    """PostgreSQL Full-Text-Search mit deutschem Woerterbuch."""
+    """postgres full-text-search mit deutschem woerterbuch"""
     conn = get_connection()
     try:
         cur = conn.cursor()
