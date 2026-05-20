@@ -186,11 +186,29 @@ def _ls_mount() -> None:
     """mountet das iframe in jedem render damit es persistent bleibt
     streamlit unmountet components die nicht jeden render aufgerufen werden
     keine blockierende warteschleife - die daten landen via session_state.storage_init
+    sobald das iframe geantwortet hat hydrieren wir unsere eigene cache-ebene
+    damit nachfolgende writes nicht von einem stale iframe-snapshot ueberschrieben werden
     """
     try:
         _ls_component(method="getAll", key="storage_init", default={})
     except Exception:
         pass
+    # hydrieren: iframe-snapshot in unseren lokalen cache nehmen
+    # nur wenn iframe schon was hat das wir nicht selber gesetzt haben
+    iframe = st.session_state.get("storage_init")
+    if isinstance(iframe, dict) and iframe:
+        cache = st.session_state.setdefault("_ls_local_cache", {})
+        for k, v in iframe.items():
+            if k not in cache:
+                cache[k] = v
+        st.session_state["_ls_ready"] = True
+    # falls iframe sehr lange braucht oder localstorage echt leer ist:
+    # nach 3 mount-zyklen markieren wir trotzdem als ready damit fresh-user-saves
+    # nicht ewig durch das safety-net in _save_chat blockiert werden
+    n = st.session_state.get("_ls_mount_count", 0) + 1
+    st.session_state["_ls_mount_count"] = n
+    if n >= 3:
+        st.session_state["_ls_ready"] = True
 
 
 def _ls_call_setitem(item_key: str, item_value: str) -> bool:
@@ -231,12 +249,18 @@ def _ls_call_deleteitem(item_key: str) -> bool:
 
 
 def _ls_storage() -> dict:
-    """liefert das aktuelle storage-dict aus session_state das vom iframe
-    nach jedem schreib- oder lesezugriff aktualisiert wird
+    """liefert das aktuelle storage-bild
+    primaer aus unserem eigenen cache der durch _ls_mount und _ls_set/delete gepflegt wird
+    fallback: das iframe-snapshot - wird nur genutzt falls cache noch nicht hydratisiert
+    der eigene cache verhindert dass ein gecachter iframe-snapshot unsere live-writes
+    wieder ueberdeckt
     """
-    data = st.session_state.get("storage_init")
-    if isinstance(data, dict):
-        return data
+    cache = st.session_state.get("_ls_local_cache")
+    if isinstance(cache, dict) and cache:
+        return cache
+    iframe = st.session_state.get("storage_init")
+    if isinstance(iframe, dict):
+        return iframe
     return {}
 
 
@@ -265,28 +289,22 @@ def _ls_get(key: str) -> str | None:
 def _ls_set(key: str, value: str) -> None:
     """wert in localstorage schreiben
     js-iframe macht den eigentlichen schreibzugriff in localstorage
-    parallel mutieren wir das storage_init-dict damit _ls_get im naechsten
-    render sofort den neuen wert sieht ohne auf das iframe-getAll zu warten
-    (reassignen von session_state[key] ist verboten weil widget-bound, dict-mutation ist ok)
+    parallel wird unser eigener lokaler cache aktualisiert damit _ls_get im
+    naechsten render sofort den neuen wert sieht und das gecachte iframe-snapshot
+    unsere live-aenderung nicht ueberschreibt
     """
     _ls_call_setitem(key, value)
-    try:
-        storage = st.session_state.get("storage_init")
-        if isinstance(storage, dict):
-            storage[key] = value
-    except Exception:
-        pass
+    cache = st.session_state.setdefault("_ls_local_cache", {})
+    cache[key] = value
 
 
 def _ls_delete(key: str) -> None:
-    """eintrag aus localstorage entfernen"""
+    """eintrag aus localstorage entfernen
+    auch lokal aus cache loeschen damit naechster read kein stale value sieht
+    """
     _ls_call_deleteitem(key)
-    try:
-        storage = st.session_state.get("storage_init")
-        if isinstance(storage, dict):
-            storage.pop(key, None)
-    except Exception:
-        pass
+    cache = st.session_state.setdefault("_ls_local_cache", {})
+    cache.pop(key, None)
 
 
 def _chats_storage_key(mode: str | None) -> str:
@@ -319,11 +337,19 @@ def _save_chat(mode: str | None, chat_id: str, messages: list[dict]) -> None:
     """fuegt einen chat in die liste ein oder updated ihn
     titel = erste user-message oder fallback
     der zuletzt geschriebene chat steht oben
+    safety: wenn der cache leer ist und das iframe nachweislich noch nicht
+    geantwortet hat, NICHT schreiben - sonst koennten existierende chats in
+    localStorage ueberschrieben werden (race condition direkt nach page-load)
     """
     if not mode or mode == "Quiz" or not messages:
         return
     try:
         chats = _load_chats(mode)
+        if not chats and not st.session_state.get("_ls_ready"):
+            # iframe hat noch keine echten daten geliefert
+            # localStorage koennte bestehende chats haben die wir nicht sehen
+            # lieber jetzt nichts ueberschreiben - wird beim naechsten chat-turn nachgeholt
+            return
         chats = [c for c in chats if c.get("id") != chat_id]
         title = "Chat"
         for m in messages:
