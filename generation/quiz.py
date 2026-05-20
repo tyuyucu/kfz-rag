@@ -6,15 +6,14 @@ from db.vector_store import semantic_search
 from generation.llm import chat
 
 
-# Pflichtfelder, die das LLM im JSON liefern muss.
+# pflichtfelder die das llm im json liefern muss
 _REQUIRED_KEYS = ("question", "options", "correct_index", "explanation")
 
 
 def _extract_json_object(text: str) -> str:
-    """Extrahiert das erste JSON-Objekt aus einer LLM-Antwort.
-
-    Berücksichtigt Markdown-Code-Blöcke und greift sonst per Regex auf den
-    ersten {...}-Block — falls das Modell doch mal Drumherum-Text liefert.
+    """extrahiert das erste json-objekt aus der llm-antwort
+    beruecksichtigt markdown-code-bloecke
+    sonst greift es per regex auf den ersten {...}-block falls drumherum-text dabei ist
     """
     if "```json" in text:
         text = text.split("```json", 1)[1]
@@ -32,7 +31,9 @@ def _extract_json_object(text: str) -> str:
 
 
 def _validate_quiz_dict(data: dict) -> str | None:
-    """Strukturprüfung. None bei OK, sonst Fehlermeldung."""
+    """strukturpruefung
+    None bei ok sonst fehlermeldung
+    """
     for key in _REQUIRED_KEYS:
         if key not in data:
             return f"Pflichtfeld '{key}' fehlt."
@@ -48,19 +49,16 @@ def _validate_quiz_dict(data: dict) -> str | None:
 def generate_quiz_question(
     topic: str | None = None,
 ) -> tuple[dict | None, str | None]:
-    """Generiert eine Multiple-Choice-Frage basierend auf der Wissensbasis.
+    """generiert eine multiple-choice-frage aus der wissensbasis
 
-    Returns
-    -------
-    (quiz_data, error_message)
-        Bei Erfolg: (dict, None) mit keys question, options, correct_index,
-        explanation, source, source_chunks.
-        Bei Fehler: (None, str) — Meldung kann der UI direkt angezeigt werden.
+    returns (quiz_data error_message)
+    erfolg: (dict None) mit keys question options correct_index explanation source source_chunks
+    fehler: (None str) - meldung kann der ui direkt angezeigt werden
     """
     if topic:
         query = topic
     else:
-        # Zufälliges Thema aus der Wissensbasis wählen
+        # zufaelliges thema aus der wissensbasis
         sample_topics = [
             "Haftpflichtversicherung Deckungsumfang",
             "Pflichtversicherungsgesetz",
@@ -73,7 +71,7 @@ def generate_quiz_question(
         ]
         query = random.choice(sample_topics)
 
-    # Retrieval -----------------------------------------------------------
+    # retrieval
     try:
         query_embedding = embed_query(query)
         chunks = semantic_search(query_embedding, top_k=3)
@@ -88,7 +86,7 @@ def generate_quiz_question(
 
     context_text = "\n\n".join(c["content"] for c in chunks)
 
-    # LLM-Aufruf ----------------------------------------------------------
+    # llm-aufruf
     try:
         answer_text = chat(
             [
@@ -124,7 +122,7 @@ def generate_quiz_question(
     if not answer_text or not answer_text.strip():
         return None, "Sprachmodell hat eine leere Antwort geliefert."
 
-    # JSON parsen ---------------------------------------------------------
+    # json parsen
     raw_json = _extract_json_object(answer_text)
     try:
         quiz_data = json.loads(raw_json)
@@ -138,7 +136,7 @@ def generate_quiz_question(
     if validation_error:
         return None, f"Ungültige Frage-Struktur: {validation_error}"
 
-    # Quellen anhängen ----------------------------------------------------
+    # quellen anhaengen
     sources_text: list[str] = []
     sources_struct: list[dict] = []
     seen: set[tuple[str, int]] = set()

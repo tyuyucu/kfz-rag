@@ -12,10 +12,8 @@ _current_schema: contextvars.ContextVar[str | None] = contextvars.ContextVar(
 
 
 def get_connection():
-    """Liefert eine Postgres-Verbindung. Wenn ein Eval-Schema aktiv ist
-    (siehe `use_schema`), wird `search_path` auf dieses Schema gesetzt —
-    damit operiert dieselbe Codebasis wahlweise auf Produktions- oder
-    Evaluations-Tabellen, ohne Query-Änderungen.
+    """liefert eine postgres-verbindung
+    bei aktivem schema-context wird der search_path entsprechend gesetzt
     """
     conn = psycopg2.connect(DATABASE_URL)
     schema = _current_schema.get()
@@ -29,9 +27,9 @@ def get_connection():
 
 @contextmanager
 def use_schema(name: str | None):
-    """Setzt für den gegebenen Block das aktive Schema für alle
-    `get_connection()`-Aufrufe. `None` bedeutet Default-Verhalten (public).
-    Der Kontext ist ContextVar-basiert und damit pro Thread/Task sicher.
+    """setzt das aktive schema fuer alle get_connection-aufrufe im block
+    None bedeutet default-verhalten (public)
+    contextvar-basiert also thread-safe
     """
     token = _current_schema.set(name)
     try:
@@ -41,7 +39,7 @@ def use_schema(name: str | None):
 
 
 def init_db():
-    """Erstellt alle benötigten Tabellen und Extensions."""
+    """erstellt alle tabellen und extensions"""
     conn = get_connection()
     try:
         cur = conn.cursor()
@@ -98,9 +96,8 @@ def init_db():
             );
         """)
 
-        # Persistente App-Konfiguration (lokale Distribution: Embedding-
-        # Provider-Wahl, OpenAI-Embedding-Key, Setup-Status). Daten leben
-        # mit der DB im Docker-Volume — Backup-Strategie wie für Vektoren.
+        # persistente app-config (key-value-store)
+        # haelt openai-embedding-key und setup-status
         cur.execute("""
             CREATE TABLE IF NOT EXISTS app_config (
                 key TEXT PRIMARY KEY,
@@ -115,10 +112,12 @@ def init_db():
         conn.close()
 
 
-# ── Config-Tabelle: Key/Value-Persistenz für lokale App-Einstellungen ──
+# ── config-tabelle key-value-persistenz ──
 
 def get_config(key: str) -> str | None:
-    """Liest einen Config-Wert. None, wenn nicht gesetzt."""
+    """liest einen config-wert
+    None wenn nicht gesetzt
+    """
     conn = get_connection()
     try:
         cur = conn.cursor()
@@ -131,7 +130,9 @@ def get_config(key: str) -> str | None:
 
 
 def set_config(key: str, value: str | None) -> None:
-    """Setzt einen Config-Wert (UPSERT). value=None löscht den Eintrag."""
+    """setzt einen config-wert (upsert)
+    value=None loescht den eintrag
+    """
     conn = get_connection()
     try:
         cur = conn.cursor()
@@ -153,7 +154,7 @@ def set_config(key: str, value: str | None) -> None:
 
 
 def get_all_config() -> dict[str, str]:
-    """Liefert alle Config-Einträge als Dict — z. B. für Debug-Anzeige."""
+    """alle config-eintraege als dict"""
     conn = get_connection()
     try:
         cur = conn.cursor()
@@ -166,20 +167,18 @@ def get_all_config() -> dict[str, str]:
 
 
 def reset_knowledge_base(*, drop_app_config: bool = True) -> None:
-    """Setzt die Wissensbasis komplett zurück: löscht alle Chunks,
-    Dokumente und Chat-Historie. Wenn `drop_app_config=True` (Default),
-    wird auch die Embedding-Provider-Wahl entfernt — der Setup-Wizard
-    läuft beim nächsten App-Start erneut.
+    """setzt die wissensbasis komplett zurueck
+    loescht chunks dokumente und chat-historie
+    drop_app_config=True loescht zusaetzlich die setup-config
+    sodass der wizard beim naechsten start wieder laeuft
 
-    Hochgeladene PDF-Dateien im Filesystem-Verzeichnis `documents/`
-    bleiben unberührt; sie werden separat gehandhabt, damit der Studi
-    sie ggf. ohne erneutes Hochladen wiederverwenden kann.
+    pdfs im documents-ordner bleiben unberuehrt
     """
     conn = get_connection()
     try:
         cur = conn.cursor()
-        # CASCADE auf chunks via documents → chunks. Chat-Historie löschen
-        # wir explizit, weil sie nicht an documents hängt.
+        # cascade ueber documents loescht auch die chunks
+        # chat-historie haengt nicht an documents also explizit loeschen
         cur.execute("DELETE FROM chunks;")
         cur.execute("DELETE FROM documents;")
         cur.execute("DELETE FROM chat_messages;")

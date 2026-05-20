@@ -1,8 +1,8 @@
-"""Einmal-Helfer: lädt vorhandene Pipeline-Samples (JSON) und führt nur
-die RAGAS-Bewertung durch. Vermeidet doppelte API-Kosten, wenn die
-Pipeline bereits durchgelaufen ist.
+"""einmal-helper: laedt bestehende pipeline-samples (json)
+und macht nur die ragas-bewertung
+vermeidet doppelte api-kosten wenn die pipeline schon durch ist
 
-Nutzung:
+nutzung:
     python -m evaluation._eval_from_samples <samples.json> [--config-name NAME]
 """
 
@@ -16,7 +16,7 @@ from datetime import datetime
 from pathlib import Path
 from statistics import mean, median
 
-import config  # noqa: F401  # lädt .env in os.environ
+import config  # noqa: F401  # laedt .env in os.environ
 from evaluation._runner import RESULTS_DIR
 
 JUDGE_MODEL = os.getenv("RAGAS_JUDGE_MODEL", "gpt-4o")

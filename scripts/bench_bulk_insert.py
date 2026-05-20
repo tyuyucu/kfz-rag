@@ -1,14 +1,10 @@
-"""Benchmark: execute_values-Bulk-Insert vs. Schleifen-INSERT.
+"""benchmark: execute_values vs schleifen-insert
+misst die reine insert-zeit beider varianten mit gleichen chunks
+nutzt ein eigenes schema bench_bulk_insert
+beruehrt public nicht
 
-Misst die reine Insertion-Zeit beider Varianten mit identischen Chunks
-(extrahiert aus einem PDF). Schreibt NICHT in die Produktions-`public`-
-Tabellen — nutzt stattdessen ein eigenes Schema `bench_bulk_insert`.
-
-Aufruf:
+aufruf:
     python -m scripts.bench_bulk_insert [--pdf <name>]
-
-Ergebnis: Zeitmessung beider Varianten + Ausgabe als Markdown-Tabelle
-nach `docs/performance_bulk_insert.md` (neue Sektion "Messwerte").
 """
 
 from __future__ import annotations
@@ -21,7 +17,7 @@ from pathlib import Path
 
 from psycopg2.extras import execute_values
 
-import config  # lädt .env in os.environ
+import config  # laedt .env in os.environ
 from db.database import get_connection, use_schema
 from evaluation._schema import ensure_eval_schema
 from ingestion.chunker import chunk_pages

@@ -1,11 +1,7 @@
-"""Hilfsfunktionen zum Anlegen und Befüllen von Evaluations-Schemas.
-
-Für Ablation- und Sensitivitäts-Läufe mit abweichender `chunk_size` wird
-ein separates Postgres-Schema (z. B. `eval_chunk500`) genutzt. Die
-Produktions-Tabellen im Schema `public` bleiben dadurch unberührt.
-
-Die Funktionen nutzen dasselbe SQL-Schema wie `db.database.init_db`, nur
-innerhalb eines Namespaces.
+"""helper zum anlegen und befuellen von eval-schemas
+fuer ablation und sensitivity laeufe mit abweichender chunk_size
+wird ein separates postgres-schema benutzt (z.b. eval_chunk500)
+die public-tabellen bleiben dadurch unberuehrt
 """
 
 from __future__ import annotations
@@ -21,11 +17,9 @@ logger = logging.getLogger(__name__)
 
 
 def schema_name_for_chunk_size(chunk_size: int, chunk_overlap: int = 200) -> str:
-    """Kanonischer Schema-Name für eine (chunk_size, chunk_overlap)-Kombi.
-
-    Bei Overlap=200 (Produktions-Default) entfällt das Suffix, damit
-    Ablation-Schemas aus früheren Läufen (nur `chunk_size` im Namen)
-    weiter wiederverwendet werden können.
+    """kanonischer schema-name fuer eine (chunk_size chunk_overlap)-kombi
+    bei overlap=200 entfaellt das suffix
+    damit alte ablation-schemas weiter wiederverwendet werden
     """
     if chunk_overlap == 200:
         return f"eval_chunk{chunk_size}"
@@ -33,7 +27,7 @@ def schema_name_for_chunk_size(chunk_size: int, chunk_overlap: int = 200) -> str
 
 
 def ensure_eval_schema(schema: str) -> None:
-    """Erzeugt Schema + Tabellen + Indizes, falls noch nicht vorhanden."""
+    """erzeugt schema tabellen und indizes falls noch nicht da"""
     conn = get_connection()
     try:
         cur = conn.cursor()
@@ -78,7 +72,7 @@ def ensure_eval_schema(schema: str) -> None:
 
 
 def schema_is_populated(schema: str) -> bool:
-    """Prüft, ob das Schema mindestens ein Dokument und einen Chunk enthält."""
+    """prueft ob das schema mindestens ein dokument und einen chunk hat"""
     try:
         with use_schema(schema):
             conn = get_connection()
@@ -97,17 +91,13 @@ def schema_is_populated(schema: str) -> bool:
 
 
 def reingest_into_schema(schema: str, *, chunk_size: int, chunk_overlap: int) -> dict:
-    """Löscht bestehende Daten im Schema und ingestiert die PDFs aus
-    `documents/` mit der gegebenen Chunk-Konfiguration neu.
-
-    Verwendet dieselbe Ingestion-Pipeline wie Produktion — lediglich die
-    Chunker-Parameter werden temporär überschrieben.
+    """loescht bestehende daten im schema und ingestet die pdfs neu
+    nutzt dieselbe ingestion-pipeline nur die chunker-parameter werden temporaer ueberschrieben
     """
     from ingestion import pipeline as ingestion_pipeline
     from ingestion import chunker as chunker_module
 
-    # Parameter-Override auf Modulebene (verliert beim Thread-Wechsel die
-    # Gültigkeit; hier in synchronem Kontext unkritisch)
+    # parameter-override auf modulebene (synchroner kontext also unkritisch)
     original_size = getattr(chunker_module, "CHUNK_SIZE", None)
     original_overlap = getattr(chunker_module, "CHUNK_OVERLAP", None)
     try:
@@ -116,7 +106,7 @@ def reingest_into_schema(schema: str, *, chunk_size: int, chunk_overlap: int) ->
 
         with use_schema(schema):
             ensure_eval_schema(schema)
-            # Truncate existing
+            # bestehende daten loeschen
             conn = get_connection()
             try:
                 cur = conn.cursor()
@@ -137,15 +127,14 @@ def reingest_into_schema(schema: str, *, chunk_size: int, chunk_overlap: int) ->
 
 @contextmanager
 def eval_schema_for_chunk_size(chunk_size: int, *, chunk_overlap: int = 200, reingest_if_empty: bool = True):
-    """Kontextmanager: ensures that queries go to the eval schema for the
-    given (chunk_size, chunk_overlap)-Kombination. Re-ingest if the schema
-    doesn't already hold data.
+    """contextmanager: queries gehen ins eval-schema fuer die (chunk_size chunk_overlap)-kombi
+    re-ingest falls das schema noch keine daten hat
     """
     schema = schema_name_for_chunk_size(chunk_size, chunk_overlap)
     ensure_eval_schema(schema)
     if reingest_if_empty and not schema_is_populated(schema):
         logger.info(
-            "Schema %s leer — starte Re-Ingest (chunk_size=%s, overlap=%s)",
+            "schema %s leer — starte re-ingest (chunk_size=%s overlap=%s)",
             schema, chunk_size, chunk_overlap,
         )
         reingest_into_schema(schema, chunk_size=chunk_size, chunk_overlap=chunk_overlap)

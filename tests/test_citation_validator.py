@@ -1,4 +1,4 @@
-"""Tests für `utils.citation_validator`."""
+"""tests fuer utils.citation_validator"""
 
 from __future__ import annotations
 
@@ -24,8 +24,8 @@ def test_extract_paragraphen_akb_und_urteile():
         "Das Urteil BGH VI ZR 253/13 bzw. VersR 2014, 1182 sind einschlägig."
     )
     cites = extract_citations(text)
-    # Nicht alle Varianten müssen exakt so erfasst werden; wir prüfen die
-    # wichtigsten Klassen
+    # nicht alle varianten muessen exakt erfasst werden
+    # wir pruefen die wichtigsten klassen
     joined = " || ".join(cites)
     assert "§ 7 Abs. 1 StVG" in joined
     assert "§ 115 VVG" in joined
@@ -52,8 +52,8 @@ def test_validate_citations_halluziniert_erkennt_risiko():
 
 
 def test_validate_citations_keine_zitate_ist_unkritisch():
-    """Antworten ohne Zitationen dürfen nicht als halluziniert eingestuft
-    werden — sie können auch korrekt sein.
+    """antworten ohne zitationen sind nicht automatisch halluziniert
+    sie koennen auch korrekt sein
     """
     r = validate_citations("Ja, das ist korrekt.", source_chunks=[CHUNK_VVG])
     assert r.citation_precision == 1.0

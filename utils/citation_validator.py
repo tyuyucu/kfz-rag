@@ -1,16 +1,13 @@
-"""Zitationskontrolle für generierte Antworten.
+"""zitationskontrolle fuer generierte antworten
 
-Erkennt juristische Zitate (Paragraphen, AKB-Klauseln, BGH-Urteile) via
-Regex und prüft, ob sie in den abgerufenen Kontext-Chunks oder den
-referenzierten Quelldokumenten tatsächlich vorkommen. Liefert eine
-Einschätzung des Halluzinationsrisikos.
+erkennt juristische zitate (paragraphen akb-klauseln bgh-urteile) via regex
+prueft ob sie in den abgerufenen chunks oder quelldokumenten vorkommen
+liefert eine einschaetzung des halluzinations-risikos
 
-Ziel: frühes Erkennen von *erfundenen* Zitaten — dem klassischen
-RAG-Halluzinationsmuster.
+frueherkennung von erfundenen zitaten - klassisches rag-halluzinations-pattern
 
-Die Funktion ist eigenständig nutzbar (siehe `tests/test_citation_validator.py`)
-und kann optional in die Generierung integriert werden (z. B. als Post-
-Processing-Schritt in `generation/generator.py`).
+eigenstaendig nutzbar (tests/test_citation_validator.py)
+optional als post-processing in generation/generator.py integrierbar
 """
 
 from __future__ import annotations
@@ -18,9 +15,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field
 
-# ──────────────────────────────────────────────
-# Regex-Patterns für die drei Zitations-Klassen
-# ──────────────────────────────────────────────
+# regex-patterns fuer die drei zitations-klassen
 
 _PARAGRAPH_PATTERN = re.compile(
     r"§+\s?\d+\w*"

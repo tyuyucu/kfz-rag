@@ -1,24 +1,22 @@
-"""RAGAS-Evaluation für den Kfz-RAG-Testkatalog.
+"""ragas-evaluation fuer den testkatalog
 
-Metriken (RAGAS v0.1+):
-- faithfulness: Wie gut stützt sich die Antwort auf die abgerufenen Kontexte?
-- answer_relevancy: Beantwortet die Antwort die Frage?
-- context_precision: Wie relevant sind die abgerufenen Kontexte?
-- context_recall: Deckt der abgerufene Kontext die Referenzantwort ab?
-  (wird nur bewertet, wenn `referenz_antwort` vorhanden ist)
+metriken (ragas v0.1+):
+- faithfulness: wie gut stuetzt sich die antwort auf die abgerufenen kontexte
+- answer_relevancy: beantwortet die antwort die frage
+- context_precision: wie relevant sind die abgerufenen kontexte
+- context_recall: deckt der kontext die referenzantwort ab
 
-Judge ≠ Generator:
-Um Self-Preference-Bias (Zheng et al. 2023, arXiv:2306.05685) zu vermeiden,
-wird der Generator (`gpt-4o-mini`) von einem stärkeren Judge-Modell
-(`gpt-4o`) bewertet. Das Judge-Modell lässt sich über die Umgebungs-
-variable RAGAS_JUDGE_MODEL überschreiben (Default: gpt-4o).
+judge ist nicht der generator
+um self-preference-bias zu vermeiden wird der generator (gpt-4o-mini)
+von einem staerkeren judge (gpt-4o) bewertet
+ueber RAGAS_JUDGE_MODEL ueberschreibbar
 
-Temperature = 0 für reproduzierbare Ergebnisse.
+temperature=0 fuer reproduzierbare ergebnisse
 
-Nutzung:
+nutzung:
     python -m evaluation.run_ragas [--dry-run] [--limit N] [--config-name NAME]
 
-Ausgabe:
+ausgabe:
     evaluation/results/ragas_<timestamp>.csv
     evaluation/results/ragas_<timestamp>_summary.md
     evaluation/results/ragas_<timestamp>_summary.json
@@ -35,7 +33,7 @@ from pathlib import Path
 from statistics import mean, median
 from typing import Any
 
-# Lokale Imports
+# lokale imports
 from evaluation._cost import estimate_run_cost
 from evaluation._runner import (
     EvalSample,
@@ -56,7 +54,7 @@ GENERATOR_MODEL = os.getenv("GENERATOR_MODEL", "gpt-4o-mini")
 
 
 def _eval_generate(query: str, chunks: list[dict]):
-    """Generierung mit temperature=0.0 für deterministische Evaluation."""
+    """generierung mit temperature=0.0 fuer deterministische evaluation"""
     return generate_answer_with_usage(query, chunks, temperature=0.0)
 
 

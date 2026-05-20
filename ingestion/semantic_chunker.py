@@ -1,17 +1,13 @@
-"""Semantisches Chunking als alternative Ingestion-Strategie.
+"""semantisches chunking als alternative zur recursive-character-strategie
 
-Nutzt `langchain_experimental.text_splitter.SemanticChunker`: statt
-statischer Längen (RecursiveCharacterTextSplitter) werden Chunk-
-Grenzen an Stellen gesetzt, an denen die Embeddings aufeinander-
-folgender Sätze signifikant voneinander abweichen.
+statt statischer laengen werden chunk-grenzen dort gesetzt
+wo embeddings aufeinanderfolgender saetze signifikant abweichen
 
-Erzeugt einheitliche `{content, page_number, chunk_index}`-Dicts wie
-`ingestion.chunker.chunk_pages` — damit ist der restliche Ingestion-
-Weg unverändert.
+erzeugt die gleichen {content page_number chunk_index}-dicts wie
+ingestion.chunker.chunk_pages damit der rest der pipeline gleich bleibt
 
-`langchain_experimental` ist eine optionale Abhängigkeit (siehe
-`requirements.txt`): wenn das Paket nicht installiert ist, wirft der
-Aufruf eine aussagekräftige Fehlermeldung.
+langchain_experimental ist optional - wenn das paket fehlt
+wirft der aufruf eine aussagekraeftige fehlermeldung
 """
 
 from __future__ import annotations

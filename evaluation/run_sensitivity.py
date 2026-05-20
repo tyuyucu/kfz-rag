@@ -1,20 +1,18 @@
-"""Sensitivitätsanalyse für zentrale Pipeline-Parameter.
+"""sensitivitaetsanalyse fuer zentrale pipeline-parameter
 
-Untersucht zwei Parametergitter:
-1. `chunk_size × chunk_overlap` — mit erforderlichem Re-Ingest je Kombination
-2. `top_k` (Kandidaten nach Reranking) — ohne Re-Ingest
+zwei parametergitter:
+1) chunk_size x chunk_overlap (mit re-ingest pro kombi)
+2) top_k (kandidaten nach reranking ohne re-ingest)
 
-Kombinationen, bei denen `chunk_overlap > 20 % * chunk_size`, werden
-übersprungen (keine sinnvolle Konfiguration).
+kombinationen mit overlap > 20% * chunk_size werden uebersprungen
 
-Aus Kostengründen werden die Metriken nur auf den `medium`-Fragen
-des Testkatalogs berechnet (N=20).
+aus kostengruenden nur auf den medium-fragen des testkatalogs (N=20)
 
-Ergebnisse:
-- CSV mit je Kombination (Faithfulness, Context Precision)
-- Zwei Heatmap-PNGs
+ausgaben:
+- csv pro kombi mit faithfulness und context_precision
+- zwei heatmap-pngs
 
-Nutzung:
+nutzung:
     python -m evaluation.run_sensitivity [--dry-run] [--yes]
 """
 

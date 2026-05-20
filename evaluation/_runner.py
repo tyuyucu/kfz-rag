@@ -1,9 +1,8 @@
-"""Gemeinsame Runner-Infrastruktur für die Evaluations-Skripte.
-
-- lädt den Testkatalog
-- orchestriert Retrieval + Generierung pro Frage
-- speichert Traces (siehe `_tracing.py`)
-- stellt Export-Helfer für CSV/JSON/Markdown bereit
+"""runner-infrastruktur fuer die evaluations-skripte
+- laedt den testkatalog
+- orchestriert retrieval und generierung pro frage
+- speichert traces (siehe _tracing.py)
+- export-helfer fuer csv/json/markdown
 """
 
 from __future__ import annotations
@@ -27,7 +26,7 @@ RESULTS_DIR = EVAL_DIR / "results"
 
 @dataclass
 class EvalSample:
-    """Ergebnis eines einzelnen Frage-Durchlaufs."""
+    """ergebnis eines einzelnen frage-durchlaufs"""
     question_id: str
     frage: str
     referenz_antwort: str
@@ -86,10 +85,9 @@ def run_pipeline_for_question(
     retrieve_kwargs: dict[str, Any] | None = None,
     generator_model: str = LLM_MODEL,
 ) -> EvalSample:
-    """Führt Retrieval + Generierung für eine Frage aus und protokolliert Traces.
-
-    `retrieve_fn(query, **retrieve_kwargs)` -> list[dict] mit 'text' und Metadaten.
-    `generate_fn(query, chunks)` -> (answer_text, usage_dict|None).
+    """fuehrt retrieval und generierung fuer eine frage aus und logt traces
+    retrieve_fn(query **kwargs) -> list[dict] mit text und metadaten
+    generate_fn(query chunks) -> (answer_text usage_dict|None)
     """
     retrieve_kwargs = retrieve_kwargs or {}
     sample = EvalSample(

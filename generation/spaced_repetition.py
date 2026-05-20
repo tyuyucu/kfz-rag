@@ -1,24 +1,20 @@
-"""SM-2-Algorithmus (SuperMemo 2, Wozniak 1987) für den Quiz-Modus.
+"""sm-2-algorithmus (supermemo 2) fuer den quiz-modus
 
-Verwaltet pro Nutzer und Frage den Easiness Factor (EF), das nächste
-Wiederholungsintervall in Tagen und die Anzahl erfolgreicher
-Wiederholungen in Folge. Auf dieser Basis kann der Quiz-Modus gezielt
-Fragen auswählen, die jetzt oder demnächst zur Wiederholung anstehen.
+verwaltet pro frage den easiness factor das intervall in tagen
+und die anzahl erfolgreicher wiederholungen in folge
+damit der quiz-modus gezielt faellige fragen ausspielen kann
 
-Bewertung (Rating) pro Antwort, analog SuperMemo:
+rating pro antwort:
     0 = komplett vergessen
-    1 = falsche Antwort, aber korrekt beim Nachdenken erkannt
-    2 = falsche Antwort, die richtige fiel einem leicht ein
-    3 = korrekte Antwort, aber mühsam erinnert
-    4 = korrekte Antwort nach kurzem Zögern
+    1 = falsch aber beim nachdenken erkannt
+    2 = falsch die richtige fiel leicht ein
+    3 = korrekt aber muehsam erinnert
+    4 = korrekt nach kurzem zoegern
     5 = perfekt und unmittelbar
 
-Rückgabe: aktualisierter Nutzerstatus mit EF, Intervall, nächstem
-Wiederholungszeitpunkt.
-
-DB-Schema (wird vom Quiz-Modus genutzt):
-    quiz_attempts(user_id, question_hash, ef, interval_days,
-                  repetitions, next_review_at, last_rating, updated_at)
+db-schema:
+    quiz_attempts(user_id question_hash ef interval_days
+                  repetitions next_review_at last_rating updated_at)
 """
 
 from __future__ import annotations

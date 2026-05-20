@@ -1,4 +1,4 @@
-"""Tests für `ingestion.chunker.chunk_pages`."""
+"""tests fuer ingestion.chunker.chunk_pages"""
 
 from __future__ import annotations
 
@@ -13,7 +13,7 @@ def _page(num: int, text: str) -> dict:
 
 
 def test_chunker_respektiert_chunk_size(monkeypatch):
-    """Einzelne Chunks überschreiten chunk_size + kleine Reserve nicht deutlich."""
+    """einzelne chunks ueberschreiten chunk_size + reserve nicht deutlich"""
     monkeypatch.setattr(chunker_module, "CHUNK_SIZE", 200)
     monkeypatch.setattr(chunker_module, "CHUNK_OVERLAP", 20)
 
@@ -21,15 +21,14 @@ def test_chunker_respektiert_chunk_size(monkeypatch):
     chunks = chunk_pages([_page(1, long_text)])
 
     assert len(chunks) > 1
-    # RecursiveCharacterTextSplitter splittet etwas weicher, daher Toleranz.
+    # splitter ist etwas weicher daher toleranz
     oversized = [c for c in chunks if len(c["content"]) > 260]
     assert not oversized, f"Erwartet alle Chunks ≤ 260 Zeichen, fand: {[len(c['content']) for c in oversized]}"
 
 
 def test_chunker_overlap_erzeugt_teilweise_shared_content(monkeypatch):
-    """Bei konfiguriertem Overlap teilen aufeinanderfolgende Chunks mindestens
-    ein paar Zeichen. Wir prüfen das über ein Indiz: die Gesamt-Länge der
-    Chunks ist grösser als die Länge des Originaltexts, wenn Overlap > 0.
+    """bei overlap teilen aufeinanderfolgende chunks ein paar zeichen
+    indiz: gesamt-laenge der chunks > originaltext-laenge wenn overlap > 0
     """
     monkeypatch.setattr(chunker_module, "CHUNK_SIZE", 100)
     monkeypatch.setattr(chunker_module, "CHUNK_OVERLAP", 30)

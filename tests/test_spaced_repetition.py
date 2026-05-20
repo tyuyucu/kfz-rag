@@ -1,4 +1,4 @@
-"""Tests für SM-2-Logik (ohne DB)."""
+"""tests fuer die sm-2-logik (ohne db)"""
 
 from __future__ import annotations
 
@@ -25,13 +25,13 @@ def test_falsche_antwort_setzt_wiederholungen_zurueck():
     s2 = sm2_step(s, 1)
     assert s2.repetitions == 0
     assert s2.interval_days == 1
-    # EF muss unter den vorigen Wert fallen (Rating 1 ist schlecht)
+    # ef muss unter den vorigen wert fallen (rating 1 ist schlecht)
     assert s2.ef < 2.7
 
 
 def test_ef_bleibt_oberhalb_des_minimums():
     s = SM2State(ef=MIN_EF)
-    # Rating 0 versucht EF weiter zu senken; darf nicht unter MIN_EF fallen
+    # rating 0 versucht ef weiter zu senken darf aber nicht unter MIN_EF fallen
     s2 = sm2_step(s, 0)
     assert s2.ef >= MIN_EF
 

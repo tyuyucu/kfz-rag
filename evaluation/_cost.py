@@ -1,11 +1,7 @@
-"""API-Kosten-Schätzung für OpenAI-Aufrufe.
-
-Preise in USD pro 1M Token. Stand: April 2026 — bei Preisänderungen
-müssen die Werte hier aktualisiert werden. Die Pipeline verlässt sich
-nicht darauf; die Werte dienen ausschließlich der Kennzahlenerhebung
-in den Evaluations-Läufen.
-
-Quelle: openai.com/api/pricing (Abruf April 2026).
+"""api-kosten-schaetzung fuer openai-calls
+preise in usd pro 1M token (stand april 2026)
+bei preisaenderungen werte hier aktualisieren
+nur fuer kennzahlen in den eval-laeufen die pipeline braucht das nicht
 """
 
 from dataclasses import dataclass
@@ -13,11 +9,11 @@ from dataclasses import dataclass
 
 @dataclass(frozen=True)
 class ModelPricing:
-    input_per_1m: float   # USD pro 1M Input-Tokens
-    output_per_1m: float  # USD pro 1M Output-Tokens
+    input_per_1m: float   # usd pro 1M input-tokens
+    output_per_1m: float  # usd pro 1M output-tokens
 
 
-# Stand April 2026
+# stand april 2026
 PRICING: dict[str, ModelPricing] = {
     "gpt-4o-mini": ModelPricing(input_per_1m=0.15, output_per_1m=0.60),
     "gpt-4o": ModelPricing(input_per_1m=2.50, output_per_1m=10.00),
@@ -26,9 +22,8 @@ PRICING: dict[str, ModelPricing] = {
 
 
 def cost_usd(model: str, input_tokens: int, output_tokens: int = 0) -> float:
-    """Errechnet die USD-Kosten für eine Anzahl Tokens des gegebenen Modells.
-
-    Unbekannte Modelle → 0.0 (mit Hinweis in der Tracing-DB dokumentiert).
+    """rechnet die usd-kosten fuer tokens des modells
+    unbekannte modelle -> 0.0
     """
     p = PRICING.get(model)
     if p is None:
@@ -46,17 +41,15 @@ def estimate_run_cost(
     judge_model: str = "gpt-4o",
     embedding_tokens_per_question: int = 80,
 ) -> dict[str, float]:
-    """Grobe Vorabschätzung der API-Kosten eines RAGAS-Laufs.
-
-    Wird beim Start der Evaluations-Skripte angezeigt, damit der Nutzer
-    die Größenordnung sieht, bevor Kosten anfallen.
+    """grobe vorab-schaetzung der api-kosten fuer einen ragas-lauf
+    wird beim start angezeigt damit man die groessenordnung sieht
     """
     gen_cost = num_questions * cost_usd(
         generator_model,
         avg_input_tokens_per_question,
         avg_output_tokens_per_question,
     )
-    # RAGAS-Judge bewertet pro Frage ~2-3 Kontexte mit je ~1500 Token Prompt
+    # ragas-judge bewertet pro frage ~2-3 kontexte mit je ~1500 token prompt
     judge_cost = num_questions * cost_usd(judge_model, 5000, 300)
     embed_cost = num_questions * cost_usd(
         "text-embedding-3-small", embedding_tokens_per_question, 0

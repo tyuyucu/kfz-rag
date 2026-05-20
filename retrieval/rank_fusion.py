@@ -2,9 +2,8 @@ from config import RRF_K
 
 
 def reciprocal_rank_fusion(result_lists: list[list[dict]], k: int = RRF_K) -> list[dict]:
-    """Kombiniert mehrere Ergebnislisten mittels Reciprocal Rank Fusion.
-
-    RRF Score = sum(1 / (k + rank_i)) für jeden Rang in jeder Liste.
+    """kombiniert mehrere ergebnislisten via reciprocal rank fusion
+    rrf-score = sum(1 / (k + rank_i)) ueber alle listen
     """
     fused_scores: dict[int, float] = {}
     chunk_data: dict[int, dict] = {}

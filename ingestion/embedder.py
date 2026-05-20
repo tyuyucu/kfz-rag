@@ -1,20 +1,7 @@
-"""Embedding-Layer.
-
-Verwendet `text-embedding-3-small` über die OpenAI-API. Der Schlüssel
-wird einmalig im First-Run-Wizard hinterlegt und in der `app_config`-
-Tabelle persistiert; Eval-Skripte fallen auf die `OPENAI_API_KEY`-
-Umgebungsvariable zurück.
-
-Ein lokaler, kostenfreier Embedding-Pfad (z. B. GTE-Qwen2-1.5B oder
-multilingual-e5-large-instruct) wurde evaluiert und im Rahmen der
-Bachelorarbeit verworfen — Begründung siehe
-`notes/design_decisions.md` („Embedding-Provider: OpenAI als
-Default"). Kurzfassung: 1,5 Mrd-Parameter-Modelle benötigen auf
-typischer Studi-CPU ~80–130 min für eine ~21 MB PDF und ~10 GB RAM,
-was die Anwendung praktisch unbenutzbar macht. Kleinere Modelle
-hätten ein abweichendes Vektorraum-Schema erfordert. Da die
-OpenAI-Kosten für Studierende bei <0,01 € pro Setup liegen, ist der
-API-Pfad der pragmatische Standard.
+"""embedding-layer
+nutzt text-embedding-3-small ueber die openai-api
+der schluessel wird im wizard hinterlegt und in app_config gespeichert
+skripte ausserhalb der app fallen auf OPENAI_API_KEY env zurueck
 """
 
 from __future__ import annotations
@@ -22,15 +9,14 @@ from __future__ import annotations
 from config import EMBEDDING_DIMENSION, EMBEDDING_MODEL
 
 
-# Konstanten — werden aus Bestandsgründen weiterhin exportiert (Eval-
-# Skripte, Tests). PROVIDER_OPENAI bleibt als Aktivanzeige für die UI;
-# der frühere Mehr-Provider-Pfad ist entfernt.
+# wird weiterhin exportiert fuer ui-anzeige
 PROVIDER_OPENAI = "openai"
 
 
 def _resolve_openai_key() -> str | None:
-    """Bevorzugt den im Wizard eingegebenen Embedding-Schlüssel aus der
-    DB; fällt auf die Env-Variable zurück (Eval-Skripte, CI)."""
+    """bevorzugt den im wizard hinterlegten schluessel
+    faellt sonst auf die env-variable zurueck
+    """
     try:
         from db.database import get_config
         key = get_config("openai_embedding_key")
@@ -42,7 +28,8 @@ def _resolve_openai_key() -> str | None:
     return OPENAI_API_KEY
 
 
-# Cache für den OpenAI-Client. Wird geleert, wenn der Schlüssel wechselt.
+# cache fuer den openai-client
+# wird geleert wenn der schluessel wechselt
 _openai_client = None
 _openai_key_cache: str | None = None
 
@@ -52,7 +39,7 @@ def _get_openai_client():
     key = _resolve_openai_key()
     if not key:
         raise RuntimeError(
-            "Kein OpenAI-API-Schlüssel für Embeddings hinterlegt. "
+            "kein OpenAI-Schluessel fuer Embeddings hinterlegt. "
             "Bitte im Setup-Wizard eintragen oder OPENAI_API_KEY setzen."
         )
     if _openai_client is None or _openai_key_cache != key:
@@ -63,8 +50,9 @@ def _get_openai_client():
 
 
 def embed_texts(texts: list[str]) -> list[list[float]]:
-    """Erstellt Embeddings für eine Liste von Texten via OpenAI API.
-    Verarbeitet in Batches à 100 (API-Limit liegt bei 2048)."""
+    """embeddings fuer eine liste von texten
+    verarbeitet in batches à 100 (api-limit liegt bei 2048)
+    """
     if not texts:
         return []
     client = _get_openai_client()
@@ -77,26 +65,28 @@ def embed_texts(texts: list[str]) -> list[list[float]]:
 
 
 def embed_query(query: str) -> list[float]:
-    """Embedded eine einzelne Suchanfrage."""
+    """embedding fuer eine einzelne suchanfrage"""
     return embed_texts([query])[0]
 
 
 def get_active_provider() -> str:
-    """Hilfsfunktion für UI/Logging — aktuell ausschließlich `openai`."""
+    """helper fuer ui aktuell immer openai"""
     return PROVIDER_OPENAI
 
 
 def reset_provider_caches() -> None:
-    """Leert den internen OpenAI-Client-Cache. Wird nach Schlüssel-Wechsel
-    oder beim Reset der Wissensbasis aufgerufen."""
+    """leert den internen client-cache
+    wird nach key-wechsel oder reset aufgerufen
+    """
     global _openai_client, _openai_key_cache
     _openai_client = None
     _openai_key_cache = None
 
 
 def verify_openai_key(key: str) -> tuple[bool, str | None]:
-    """Macht einen Mini-Embed-Aufruf, um den Schlüssel zu validieren.
-    Returns (ok, fehlermeldung)."""
+    """mini-embed-aufruf zur key-validierung
+    returns (ok fehlermeldung)
+    """
     try:
         from openai import OpenAI
         client = OpenAI(api_key=key)

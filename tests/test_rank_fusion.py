@@ -1,4 +1,4 @@
-"""Tests für `retrieval.rank_fusion.reciprocal_rank_fusion`."""
+"""tests fuer retrieval.rank_fusion.reciprocal_rank_fusion"""
 
 from __future__ import annotations
 
@@ -10,8 +10,8 @@ def _row(chunk_id: int, content: str = "") -> dict:
 
 
 def test_rrf_sortiert_nach_summierten_reziproken_raengen():
-    """Ein Chunk, der in beiden Listen ganz oben steht, gewinnt gegen
-    einen Chunk, der nur in einer Liste ganz oben ist.
+    """ein chunk der in beiden listen oben ist gewinnt
+    gegen einen chunk der nur in einer liste oben ist
     """
     list_a = [_row(1), _row(2), _row(3)]
     list_b = [_row(2), _row(1), _row(3)]
@@ -19,19 +19,19 @@ def test_rrf_sortiert_nach_summierten_reziproken_raengen():
     fused = reciprocal_rank_fusion([list_a, list_b], k=60)
     ids = [r["id"] for r in fused]
 
-    # Chunks 1 und 2 haben beide zwei Top-2-Ränge; Chunk 3 ist schlechter
+    # chunks 1 und 2 haben beide zwei top-2-raenge chunk 3 ist schlechter
     assert ids[-1] == 3
     assert set(ids[:2]) == {1, 2}
-    # jeder Chunk bekommt einen rrf_score
+    # jeder chunk bekommt einen rrf_score
     assert all("rrf_score" in r for r in fused)
 
 
 def test_rrf_dedupliziert_identische_chunk_ids():
-    """Wenn ein Chunk in mehreren Listen auftaucht, darf er am Ende nur
-    einmal im Ergebnis erscheinen.
+    """ein chunk der in mehreren listen vorkommt
+    darf am ende nur einmal im ergebnis erscheinen
     """
     list_a = [_row(1), _row(2)]
-    list_b = [_row(1), _row(1), _row(3)]  # Chunk 1 sogar doppelt
+    list_b = [_row(1), _row(1), _row(3)]  # chunk 1 sogar doppelt
 
     fused = reciprocal_rank_fusion([list_a, list_b], k=60)
     ids = [r["id"] for r in fused]

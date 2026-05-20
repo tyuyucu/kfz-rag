@@ -1,22 +1,16 @@
-"""LLM-Adapter — bündelt Chat-Aufrufe.
+"""llm-adapter buendelt chat-aufrufe
 
-Routing-Logik:
-1. Hat der/die Studierende in der Sidebar einen eigenen API-Schlüssel +
-   Provider hinterlegt (Streamlit-Session-State `user_api_key` und
-   `user_provider`), wird `llm_client` mit diesem Schlüssel genutzt
-   (OpenAI / Groq / Gemini).
-2. Sonst: Fallback auf lokales Ollama. Dieses ist kostenlos, erfordert
-   aber eine lokale Installation (https://ollama.com). So entstehen dem
-   Anbieter keine Token-Kosten für fremde Anfragen.
+routing:
+1) wenn in der sidebar ein api-key gesetzt wurde
+   wird llm_client mit diesem key genutzt (OpenAI Groq Gemini)
+2) sonst fallback auf lokales Ollama (https://ollama.com)
 
-Sonderfall Evaluation: `chat_with_usage` läuft fest über OpenAI, da die
-Bachelorarbeits-Auswertungen reproduzierbar bleiben sollen und die
-Token-Metriken benötigt werden.
+sonderfall evaluation: chat_with_usage laeuft fest ueber OpenAI
+weil die auswertungen reproduzierbar bleiben sollen
+und token-metriken gebraucht werden
 
-Hinweis Embeddings: laufen zwingend über OpenAI, weil die Chunks in der
-Datenbank mit `text-embedding-3-small` vektorisiert wurden. Embeddings
-sind sehr günstig (~0,02 USD pro 1 Mio. Tokens) und werden vom Anbieter
-getragen.
+embeddings laufen immer ueber OpenAI weil die chunks in der db
+mit text-embedding-3-small vektorisiert sind
 """
 
 from __future__ import annotations
@@ -28,27 +22,25 @@ from openai import OpenAI
 
 from config import OPENAI_API_KEY, LLM_MODEL
 
-# Default-Client: einmal initialisiert, wird bei Aufrufen ohne User-Key benutzt.
+# default-client einmal initialisiert
+# wird bei aufrufen ohne user-key genutzt (eval-pfad)
 _default_openai = OpenAI(api_key=OPENAI_API_KEY)
 
 DEFAULT_MAX_TOKENS = 2048
 
-# Default-Modell für Ollama-Fallback. Wird beim ersten Aufruf automatisch
-# nachgeladen, falls noch nicht lokal vorhanden (~2,0 GB).
-# Begründung der 3B-Wahl siehe notes/design_decisions.md
-# („Default-Modell für lokales Ollama").
+# default-modell fuer den ollama-fallback
+# wird beim ersten aufruf automatisch nachgeladen (~2 gb)
 OLLAMA_DEFAULT_MODEL = "llama3.2:3b"
 
-# Merker, damit wir den Pull nicht bei jeder Anfrage erneut prüfen.
+# merker damit wir den pull nicht bei jeder anfrage neu pruefen
 _ollama_model_checked: set[str] = set()
 
 
 def _session_creds() -> tuple[str, str] | None:
-    """Liest User-Key + Provider aus dem Streamlit-Session-State, falls vorhanden."""
+    """liest user-key und provider aus streamlit-session-state"""
     try:
         import streamlit as st
-        # Außerhalb eines Streamlit-Skript-Runs (z.B. in Eval-Skripten) gibt es
-        # keinen aktiven Session-State.
+        # ausserhalb eines streamlit-runs gibt es keinen session-state
         if not st.runtime.exists():
             return None
         api_key = (st.session_state.get("user_api_key") or "").strip()
@@ -62,7 +54,9 @@ def _session_creds() -> tuple[str, str] | None:
 
 def _make_llm_client(api_key: str, provider: str, *, temperature: float,
                      max_tokens: int):
-    """Erzeugt einen LLMClient mit dem User-Key, ohne os.environ dauerhaft zu modifizieren."""
+    """erzeugt einen LLMClient mit dem user-key
+    ohne os.environ dauerhaft zu modifizieren
+    """
     from llm_client import LLMClient
 
     env_var = f"{provider.upper()}_API_KEY"
@@ -82,18 +76,16 @@ def _make_llm_client(api_key: str, provider: str, *, temperature: float,
 
 
 def _ensure_ollama_model(model: str = OLLAMA_DEFAULT_MODEL) -> None:
-    """Sorgt dafür, dass das Ollama-Modell lokal verfügbar ist. Lädt es
-    beim ersten Aufruf automatisch nach.
-
-    Wenn Ollama nicht erreichbar ist oder der Pull scheitert, schluckt die
-    Funktion die Exception — der eigentliche Chat-Aufruf wird die Fehler-
-    meldung ohnehin sauber surface'n.
+    """stellt sicher dass das ollama-modell lokal verfuegbar ist
+    laedt es beim ersten aufruf automatisch nach
+    wenn ollama nicht erreichbar ist wird die exception geschluckt
+    der eigentliche chat-call wirft die meldung dann sauber selbst
     """
     if model in _ollama_model_checked:
         return
     try:
         import ollama
-        # Verfuegbare Modelle abfragen
+        # verfuegbare modelle abfragen
         try:
             resp = ollama.list()
             existing = []
@@ -106,9 +98,9 @@ def _ensure_ollama_model(model: str = OLLAMA_DEFAULT_MODEL) -> None:
                 _ollama_model_checked.add(model)
                 return
         except Exception:
-            pass  # Wenn list() scheitert, gehen wir trotzdem auf pull
+            pass  # wenn list scheitert versuchen wir trotzdem den pull
 
-        # Streamlit-Status anzeigen, falls verfuegbar
+        # streamlit-spinner anzeigen falls verfuegbar
         try:
             import streamlit as st
             if st.runtime.exists():
@@ -123,17 +115,15 @@ def _ensure_ollama_model(model: str = OLLAMA_DEFAULT_MODEL) -> None:
             ollama.pull(model)
         _ollama_model_checked.add(model)
     except Exception:
-        # Falls weder list noch pull moeglich war: lass den eigentlichen
-        # Chat-Aufruf den Fehler werfen (klarer fuer den User).
+        # weder list noch pull moeglich
+        # lass den eigentlichen chat-call den fehler werfen
         pass
 
 
 def _get_chat_client(*, temperature: float, max_tokens: int):
-    """Liefert einen LLMClient für die aktuelle Session.
-
-    Mit User-Key: konfigurierter Provider (OpenAI/Groq/Gemini).
-    Ohne User-Key: lokales Ollama (kostenlos, Installation erforderlich).
-    Default-Ollama-Modell wird bei Bedarf automatisch nachgeladen.
+    """liefert einen LLMClient fuer die aktuelle session
+    mit user-key: gewaehlter provider
+    ohne user-key: lokales ollama
     """
     from llm_client import LLMClient
 
@@ -143,8 +133,8 @@ def _get_chat_client(*, temperature: float, max_tokens: int):
         return _make_llm_client(api_key, provider,
                                 temperature=temperature, max_tokens=max_tokens)
 
-    # Kein User-Key: explizit Ollama erzwingen, damit LLMClient nicht still-
-    # schweigend auf den Projekt-OpenAI-Key aus der env zurueckfaellt.
+    # ohne user-key explizit ollama erzwingen
+    # damit LLMClient nicht stillschweigend auf den env-key zurueckfaellt
     _ensure_ollama_model(OLLAMA_DEFAULT_MODEL)
     return LLMClient(
         api_choice="ollama",
@@ -156,24 +146,25 @@ def _get_chat_client(*, temperature: float, max_tokens: int):
 
 def chat(messages: list[dict], *, temperature: float = 0.7,
          max_tokens: int = DEFAULT_MAX_TOKENS) -> str:
-    """Single-shot Chat-Completion. Nutzt User-Key falls gesetzt, sonst
-    lokales Ollama."""
+    """single-shot chat-completion
+    nutzt user-key falls gesetzt sonst lokales ollama
+    """
     client = _get_chat_client(temperature=temperature, max_tokens=max_tokens)
     return client.chat_completion(messages)
 
 
 def chat_stream(messages: list[dict], *, temperature: float = 0.7,
                 max_tokens: int = DEFAULT_MAX_TOKENS) -> Iterator[str]:
-    """Streamt eine Chat-Antwort Token für Token."""
+    """streamt eine chat-antwort token fuer token"""
     client = _get_chat_client(temperature=temperature, max_tokens=max_tokens)
     yield from client.chat_completion_stream(messages)
 
 
 def chat_with_usage(messages: list[dict], *, temperature: float = 0.2
                     ) -> tuple[str, dict | None]:
-    """Wie `chat`, gibt aber zusätzlich die OpenAI-`usage`-Metriken zurück
-    (prompt_tokens, completion_tokens). Wird ausschließlich im
-    Evaluations-Pfad verwendet — daher fest auf OpenAI."""
+    """wie chat aber gibt zusaetzlich die openai-usage-metriken zurueck
+    nur im eval-pfad verwendet daher fest auf openai
+    """
     response = _default_openai.chat.completions.create(
         model=LLM_MODEL,
         temperature=temperature,

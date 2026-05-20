@@ -1,8 +1,5 @@
-"""Tests für `retrieval.hybrid_search.hybrid_search_query`.
-
-Die Tests isolieren die Funktion von der echten Datenbank und dem
-OpenAI-Client, indem `ingestion.embedder.embed_query` und
-`db.vector_store.semantic_search` / `fulltext_search` gemockt werden.
+"""tests fuer retrieval.hybrid_search.hybrid_search_query
+isoliert von der echten db und dem openai-client via mocks
 """
 
 from __future__ import annotations
@@ -42,8 +39,8 @@ def test_hybrid_search_kombiniert_beide_suchpfade(monkeypatch):
 
 
 def test_hybrid_search_ergebnislisten_sind_unabhaengig(monkeypatch):
-    """semantic- und fulltext-Listen dürfen sich überlappen, bleiben aber
-    strukturell zwei getrennte Listen.
+    """semantic- und fulltext-listen duerfen sich ueberlappen
+    bleiben aber zwei getrennte listen
     """
     monkeypatch.setattr(hybrid_module, "embed_query", lambda q: [0.0])
     monkeypatch.setattr(hybrid_module, "semantic_search", lambda e, top_k: [_row(1)])

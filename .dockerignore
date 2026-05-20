@@ -1,7 +1,7 @@
-# Build-Kontext schlank halten — nur Source und requirements gehen ins Image.
-# Lokale Daten, IDE-Config, Eval-Output etc. bleiben weg.
+# build-kontext schlank halten
+# nur source und requirements gehen ins image
 
-# Python-Artefakte
+# python-artefakte
 __pycache__/
 *.py[cod]
 *$py.class
@@ -11,45 +11,45 @@ venv/
 env/
 .venv/
 
-# Lokale Konfiguration und Geheimnisse
+# lokale config und secrets
 .env
 .env.local
 .streamlit/secrets.toml
 
-# IDE
+# ide
 .vscode/
 .idea/
 *.swp
 *.swo
 
-# OS
+# os
 .DS_Store
 Thumbs.db
 
-# Logs
+# logs
 *.log
 
-# Datenbank-Volumes / lokale Postgres-Daten
+# lokale postgres-daten
 postgres_data/
 
-# Lokal vorhandene PDFs (werden zur Laufzeit ueber Wizard hochgeladen)
+# pdfs werden zur laufzeit ueber den wizard hochgeladen
 documents/*.pdf
 
-# Evaluations-Ausgaben
+# evaluations-ausgaben
 evaluation/results/
 evaluation/_pdf_extracted.json
 traces.db
 
-# Aenderungs-PDFs (privat)
+# tages-snapshots privat
 Änderungen/
 
-# Eigene Notizen
+# eigene notizen privat
 notes/
 
-# Docker-spezifisch
+# docker-spezifisch
 docker-compose.override.yml
 .git/
 .github/
 
-# Deployment-Spiegel (separates Repo)
+# deployment-spiegel separates repo
 deploy/

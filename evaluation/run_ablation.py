@@ -1,15 +1,13 @@
-"""Ablation-Harness für den Kfz-RAG-Stack.
+"""ablation-harness fuer den rag-stack
 
-Durchläuft 7 vordefinierte Konfigurationen und misst Faithfulness,
-Answer Relevancy, Context Precision, Context Recall, Latenz und Kosten
-je Konfiguration. Die Deltas gegenüber `baseline` werden tabellarisch
-und in drei Matplotlib-PNGs dargestellt.
+durchlaeuft 6 konfigurationen und misst faithfulness answer_relevancy
+context_precision context_recall latenz und kosten pro konfig
+deltas zur baseline werden tabellarisch und als pngs dargestellt
 
-Konfigurationen mit abweichender Chunk-Größe nutzen ein separates
-Postgres-Schema (siehe `evaluation/_schema.py`), damit die
-Produktions-Tabellen unberührt bleiben.
+konfigs mit abweichender chunk-groesse nutzen ein separates schema
+damit die public-tabellen unberuehrt bleiben
 
-Nutzung:
+nutzung:
     python -m evaluation.run_ablation [--dry-run] [--limit N] [--yes]
 """
 
@@ -56,34 +54,34 @@ CONFIGS: list[AblationConfig] = [
     AblationConfig(
         name="baseline",
         retrieve_kwargs={"use_multi_query": False, "use_hybrid": True, "use_reranker": False},
-        description="Hybrid-Suche (semantisch + Volltext) + RRF, ohne Multi-Query, ohne Reranker",
+        description="hybrid-suche (semantisch + volltext) + rrf ohne multi-query und reranker",
     ),
     AblationConfig(
         name="small_chunks",
         retrieve_kwargs={"use_multi_query": True, "use_hybrid": True, "use_reranker": True},
         chunk_size=500,
-        description="Volle Pipeline mit chunk_size=500",
+        description="volle pipeline mit chunk_size=500",
     ),
     AblationConfig(
         name="large_chunks",
         retrieve_kwargs={"use_multi_query": True, "use_hybrid": True, "use_reranker": True},
         chunk_size=2000,
-        description="Volle Pipeline mit chunk_size=2000",
+        description="volle pipeline mit chunk_size=2000",
     ),
     AblationConfig(
         name="multi_query",
         retrieve_kwargs={"use_multi_query": True, "use_hybrid": True, "use_reranker": False},
-        description="Baseline + Multi-Query (ohne Reranker)",
+        description="baseline + multi-query (ohne reranker)",
     ),
     AblationConfig(
         name="reranker",
         retrieve_kwargs={"use_multi_query": False, "use_hybrid": True, "use_reranker": True},
-        description="Baseline + Cross-Encoder-Reranker (ohne Multi-Query)",
+        description="baseline + cross-encoder-reranker (ohne multi-query)",
     ),
     AblationConfig(
         name="multi_query_plus_reranker",
         retrieve_kwargs={"use_multi_query": True, "use_hybrid": True, "use_reranker": True},
-        description="Volle Pipeline: Multi-Query + Hybrid + Reranker",
+        description="volle pipeline: multi-query + hybrid + reranker",
     ),
 ]
 

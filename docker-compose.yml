@@ -25,30 +25,21 @@ services:
     ports:
       - "8501:8501"
     environment:
-      # DB im selben Compose-Netz erreichbar; user/pass identisch zum
-      # Postgres-Service oben. Lokal abgesichert — keine externe Exposure
-      # ueber Port-Forwarding noetig (Postgres-Port nur fuer Power-User
-      # mit psql-Zugriff offen, nicht fuer die App selbst).
+      # db im selben compose-netz erreichbar
       DATABASE_URL: postgresql://raguser:ragpassword@postgres:5432/ragdb
-      # Ollama (optional) laeuft auf der Host-Maschine — der App-Container
-      # erreicht ihn ueber host.docker.internal. Auf Linux muss zusaetzlich
-      # `extra_hosts: ["host.docker.internal:host-gateway"]` gesetzt werden
-      # (siehe Override-Block unten — auskommentiert).
+      # ollama laeuft auf dem host
+      # app-container erreicht ihn ueber host.docker.internal
+      # linux braucht zusaetzlich den extra_hosts-block unten
       OLLAMA_HOST: http://host.docker.internal:11434
-      # OPENAI_API_KEY hier nur als Fallback fuer Eval-Skripte. Der
-      # Studi-Embedding-Schluessel liegt in der app_config-Tabelle, der
-      # Chat-Schluessel in st.session_state — beide werden dem Container
-      # nicht ueber env mitgegeben.
+      # OPENAI_API_KEY nur als fallback
+      # der eigentliche embedding-key kommt aus app_config (wizard)
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
     volumes:
-      # HuggingFace-Cache: Reranker-Modell (BGE-Reranker-v2-m3, ~1 GB)
-      # bleibt ueber `docker compose down` hinweg persistent.
+      # hf-cache fuer reranker-modell bleibt ueber docker compose down hinweg
       - hf_cache:/root/.cache/huggingface
-      # Hochgeladene PDFs persistieren — sonst waeren sie nach
-      # Container-Neustart weg, obwohl ihre Chunks in Postgres ueberleben.
+      # pdfs persistieren ueber container-neustarts
       - documents:/app/documents
-    # Linux-User: untenstehende Zeile aktivieren, sonst kann der
-    # App-Container Ollama auf der Host-Maschine nicht erreichen.
+    # linux-user: zeile aktivieren sonst kommt der container nicht an ollama
     # extra_hosts:
     #   - "host.docker.internal:host-gateway"
 

@@ -1,13 +1,7 @@
-"""SQLite-basiertes Tracing für Evaluations-Läufe.
-
-Jeder Schritt eines Durchlaufs (Ingestion, Retrieval-Stufen, Generator,
-Judge) schreibt einen Eintrag in die Tabelle `pipeline_traces`. Die
-Datenbank liegt standardmäßig unter `evaluation/results/traces.db` und
-wird bei Bedarf automatisch angelegt.
-
-Zweck: reproduzierbare Kennzahlenerhebung über Latenz, Token-
-Verbrauch, Kosten und Fehlerquoten — ohne die Produktions-Postgres
-zu berühren.
+"""sqlite-basiertes tracing fuer evaluations-laeufe
+jeder schritt (ingestion retrieval-stufen generator judge)
+schreibt einen eintrag in pipeline_traces
+db liegt standardmaessig in evaluation/results/traces.db
 """
 
 from __future__ import annotations
@@ -64,7 +58,7 @@ def _connect():
 
 
 def new_run_id() -> str:
-    """Erzeugt eine eindeutige Run-ID im Format YYYYMMDD_HHMMSS_<shortuuid>."""
+    """eindeutige run-id im format YYYYMMDD_HHMMSS_<shortuuid>"""
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
     return f"{ts}_{uuid.uuid4().hex[:6]}"
 
@@ -81,7 +75,7 @@ def log_trace(
     config_name: str | None = None,
     error: str | None = None,
 ) -> None:
-    """Fügt einen Schritt-Eintrag in die Trace-DB ein."""
+    """schreibt einen schritt-eintrag in die trace-db"""
     with _connect() as conn:
         conn.execute(
             """INSERT INTO pipeline_traces
@@ -104,8 +98,8 @@ def log_trace(
 
 
 def get_trace_summary(run_id: str) -> dict[str, Any]:
-    """Aggregiert die Traces eines Runs: Gesamtlatenz, Tokens, Kosten,
-    Fehlerquote, Schritt-weise Mittelwerte.
+    """aggregiert die traces eines runs
+    gesamtlatenz tokens kosten fehlerquote schritt-weise mittelwerte
     """
     with _connect() as conn:
         cur = conn.execute(
@@ -146,7 +140,7 @@ def get_trace_summary(run_id: str) -> dict[str, Any]:
 
 
 def export_traces_to_csv(run_id: str, path: str | Path) -> Path:
-    """Schreibt alle Traces eines Runs in eine CSV-Datei."""
+    """schreibt alle traces eines runs in eine csv"""
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
 

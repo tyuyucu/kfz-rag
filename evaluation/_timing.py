@@ -1,13 +1,12 @@
-"""Timing- und Token-Messung für Evaluations-Läufe.
+"""timing und token-messung fuer evaluations-laeufe
 
-Der `@measure(step_name)`-Decorator misst Latenz (ms) und zählt Input-
-und Output-Tokens via tiktoken. Die Ergebnisse werden in einer
-thread-sicheren Liste gesammelt und können über `drain_measurements()`
-abgerufen werden.
+@measure(step_name) misst latenz (ms) und zaehlt input/output-tokens via tiktoken
+ergebnisse landen in einer thread-sicheren liste
+abrufbar via drain_measurements()
 
-Die Token-Zählung ist eine Näherung: für LLM-Aufrufe mit messbarem
-`response.usage` werden die echten Token übernommen (siehe
-`record_llm_usage`), sonst tiktoken-Approximation auf Input/Output.
+token-zaehlung ist naeherung
+bei llm-calls mit response.usage werden die echten zahlen genommen (record_llm_usage)
+sonst tiktoken-approximation
 """
 
 from __future__ import annotations
@@ -50,11 +49,9 @@ def _count_tokens(text: str | None) -> int:
 
 
 def measure(step_name: str) -> Callable:
-    """Decorator: misst Laufzeit und (approximierte) Tokens einer Funktion.
-
-    Die Funktion darf beliebig viele Argumente haben; Token-Zählung
-    erfolgt auf dem ersten String-Argument (Input) und dem Rückgabewert
-    (Output, falls str).
+    """decorator misst laufzeit und (approximierte) tokens einer funktion
+    token-zaehlung auf dem ersten string-argument (input)
+    und dem rueckgabewert (output falls str)
     """
 
     def decorator(func: Callable) -> Callable:
@@ -89,8 +86,8 @@ def record_llm_usage(
     output_tokens: int,
     **extra: Any,
 ) -> None:
-    """Explizit eine Messung mit echten API-Token (z. B. aus response.usage)
-    einspeisen. Umgeht die tiktoken-Approximation.
+    """messung mit echten api-tokens einspeisen
+    umgeht die tiktoken-approximation
     """
     m = Measurement(
         step_name=step_name,
@@ -104,7 +101,7 @@ def record_llm_usage(
 
 
 def drain_measurements() -> list[Measurement]:
-    """Gibt die gesammelten Messungen zurück und leert den Puffer."""
+    """liefert die gesammelten messungen und leert den puffer"""
     with _lock:
         out = list(_measurements)
         _measurements.clear()
