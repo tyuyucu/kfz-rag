@@ -4,6 +4,12 @@ Lokal laufendes RAG-System für die Vorlesung „Kfz-Haftpflicht­versicherung".
 Drei Modi (Chat, Quiz, Sparring) über eine Streamlit-Oberfläche, alles
 auf Deutsch.
 
+> **Branch-Info:** Dieser Branch (`eval-framework`) enthält zusätzlich
+> zum Anwendungs-Code die Evaluations-Pipeline (RAGAS, Ablation,
+> Sensitivität), die pytest-Suite und Helfer-Skripte. Der Studi-
+> Auslieferungs-Stand ohne diese Entwicklungs-Werkzeuge liegt auf
+> `main`.
+
 ---
 
 ## Voraussetzungen
@@ -115,3 +121,44 @@ Der Wizard macht einen Mini-Embed-Aufruf zur Validierung. Schlägt das
 fehl, ist der Schlüssel ungültig oder dem Konto fehlt das Embeddings-
 Kontingent. Schlüssel auf [platform.openai.com/api-keys](https://platform.openai.com/api-keys)
 prüfen.
+
+---
+
+## Entwicklung lokal (ohne Docker)
+
+```bash
+docker compose up -d postgres   # nur DB im Container
+
+python -m venv venv
+source venv/Scripts/activate    # Windows / Git Bash
+# source venv/bin/activate      # macOS / Linux
+pip install -r requirements.txt
+
+# Optional: .env mit OPENAI_API_KEY fuer Eval-Skripte
+streamlit run app.py
+```
+
+## Evaluation
+
+Alle Evaluations-Skripte liegen in `evaluation/`. Ergebnisse werden
+nach `evaluation/results/` geschrieben (gitignored).
+
+```bash
+# Baseline-Metriken fuer den Testkatalog
+python -m evaluation.run_ragas
+
+# Konfigurations-Vergleich (Pipeline-Varianten)
+python -m evaluation.run_ablation
+
+# Sensitivitaet chunk_size x overlap x top_k
+python -m evaluation.run_sensitivity
+```
+
+Vor jedem kostenpflichtigen Lauf zeigt das Skript eine USD-
+Kostenschätzung und fragt nach Bestätigung (oder `--yes`).
+
+## Tests
+
+```bash
+pytest tests/
+```
