@@ -1,8 +1,10 @@
 import contextvars
+import os
 from contextlib import contextmanager
 
 import psycopg2
 from psycopg2.extras import RealDictCursor
+from psycopg2.pool import ThreadedConnectionPool
 from config import DATABASE_URL, EMBEDDING_DIMENSION
 
 
@@ -11,11 +13,31 @@ _current_schema: contextvars.ContextVar[str | None] = contextvars.ContextVar(
 )
 
 
+# connection-pool wird lazy initialisiert
+# minconn=1 maxconn=10 reicht fuer den parallel-multi-query-pfad
+# ohne dass dauerhaft viele connections offen liegen
+_pool: ThreadedConnectionPool | None = None
+
+
+def _get_pool() -> ThreadedConnectionPool:
+    global _pool
+    if _pool is None:
+        maxconn = int(os.getenv("DB_POOL_MAX", "10"))
+        _pool = ThreadedConnectionPool(
+            minconn=1,
+            maxconn=maxconn,
+            dsn=DATABASE_URL,
+        )
+    return _pool
+
+
 def get_connection():
-    """liefert eine postgres-verbindung
-    bei aktivem schema-context wird der search_path entsprechend gesetzt
+    """liefert eine postgres-verbindung aus dem pool
+    bei aktivem schema-context wird der search_path gesetzt
+    nach gebrauch mit release_connection(conn) zurueckgeben
     """
-    conn = psycopg2.connect(DATABASE_URL)
+    pool = _get_pool()
+    conn = pool.getconn()
     schema = _current_schema.get()
     if schema:
         cur = conn.cursor()
@@ -23,6 +45,16 @@ def get_connection():
         conn.commit()
         cur.close()
     return conn
+
+
+def release_connection(conn) -> None:
+    """gibt eine connection zurueck in den pool
+    ersatz fuer conn.close() bei pool-managed verbindungen
+    """
+    if _pool is not None:
+        _pool.putconn(conn)
+    else:
+        conn.close()
 
 
 @contextmanager
@@ -109,7 +141,7 @@ def init_db():
         conn.commit()
         cur.close()
     finally:
-        conn.close()
+        release_connection(conn)
 
 
 # ── config-tabelle key-value-persistenz ──
@@ -126,7 +158,7 @@ def get_config(key: str) -> str | None:
         cur.close()
         return row[0] if row else None
     finally:
-        conn.close()
+        release_connection(conn)
 
 
 def set_config(key: str, value: str | None) -> None:
@@ -150,7 +182,7 @@ def set_config(key: str, value: str | None) -> None:
         conn.commit()
         cur.close()
     finally:
-        conn.close()
+        release_connection(conn)
 
 
 def get_all_config() -> dict[str, str]:
@@ -163,7 +195,7 @@ def get_all_config() -> dict[str, str]:
         cur.close()
         return {k: v for k, v in rows}
     finally:
-        conn.close()
+        release_connection(conn)
 
 
 def reset_knowledge_base(*, drop_app_config: bool = True) -> None:
@@ -188,7 +220,7 @@ def reset_knowledge_base(*, drop_app_config: bool = True) -> None:
         conn.commit()
         cur.close()
     finally:
-        conn.close()
+        release_connection(conn)
 
 
 def get_document_by_filename(filename: str) -> dict | None:
@@ -200,7 +232,7 @@ def get_document_by_filename(filename: str) -> dict | None:
         cur.close()
         return dict(row) if row else None
     finally:
-        conn.close()
+        release_connection(conn)
 
 
 def get_all_documents() -> list[dict]:
@@ -212,7 +244,7 @@ def get_all_documents() -> list[dict]:
         cur.close()
         return [dict(r) for r in rows]
     finally:
-        conn.close()
+        release_connection(conn)
 
 
 def insert_document(filename: str, file_hash: str, page_count: int) -> int:
@@ -228,7 +260,7 @@ def insert_document(filename: str, file_hash: str, page_count: int) -> int:
         cur.close()
         return doc_id
     finally:
-        conn.close()
+        release_connection(conn)
 
 
 def delete_document(doc_id: int):
@@ -239,7 +271,7 @@ def delete_document(doc_id: int):
         conn.commit()
         cur.close()
     finally:
-        conn.close()
+        release_connection(conn)
 
 
 def create_chat_session() -> int:
@@ -252,7 +284,7 @@ def create_chat_session() -> int:
         cur.close()
         return session_id
     finally:
-        conn.close()
+        release_connection(conn)
 
 
 def save_chat_message(session_id: int, role: str, content: str):
@@ -266,7 +298,7 @@ def save_chat_message(session_id: int, role: str, content: str):
         conn.commit()
         cur.close()
     finally:
-        conn.close()
+        release_connection(conn)
 
 
 def get_chat_history(session_id: int, limit: int = 10) -> list[dict]:
@@ -282,4 +314,4 @@ def get_chat_history(session_id: int, limit: int = 10) -> list[dict]:
         cur.close()
         return list(reversed([dict(r) for r in rows]))
     finally:
-        conn.close()
+        release_connection(conn)

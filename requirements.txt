@@ -16,6 +16,9 @@ git+https://github.com/dgaida/llm_client.git
 # pdf-viewer mit sprung zur zitierten seite
 streamlit-pdf-viewer>=0.0.29
 
+# chat-history clientseitig im browser-localstorage halten
+streamlit-local-storage>=0.0.20
+
 # evaluation nur lokal noetig
 ragas>=0.1.0
 datasets>=2.14.0

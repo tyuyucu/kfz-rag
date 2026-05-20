@@ -1,6 +1,6 @@
 from psycopg2.extras import execute_values
 
-from db.database import get_connection
+from db.database import get_connection, release_connection
 
 
 def insert_chunks(document_id: int, chunks: list[dict]) -> None:
@@ -37,7 +37,7 @@ def insert_chunks(document_id: int, chunks: list[dict]) -> None:
         conn.commit()
         cur.close()
     finally:
-        conn.close()
+        release_connection(conn)
 
 
 def semantic_search(query_embedding: list[float], top_k: int = 20) -> list[dict]:
@@ -65,7 +65,7 @@ def semantic_search(query_embedding: list[float], top_k: int = 20) -> list[dict]
         cur.close()
         return results
     finally:
-        conn.close()
+        release_connection(conn)
 
 
 def fulltext_search(query: str, top_k: int = 20) -> list[dict]:
@@ -93,7 +93,7 @@ def fulltext_search(query: str, top_k: int = 20) -> list[dict]:
         cur.close()
         return results
     finally:
-        conn.close()
+        release_connection(conn)
 
 
 def get_chunk_count() -> int:
@@ -105,4 +105,4 @@ def get_chunk_count() -> int:
         cur.close()
         return count
     finally:
-        conn.close()
+        release_connection(conn)
